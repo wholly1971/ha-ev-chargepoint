@@ -1,5 +1,9 @@
 # EV ChargePoint
 
+<p align="center">
+  <img src="assets/ev-chargepoint-logo.png" alt="EV ChargePoint logo" width="420">
+</p>
+
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
