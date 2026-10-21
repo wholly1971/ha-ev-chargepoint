@@ -39,7 +39,7 @@ def schema(values):
     fields[vol.Required("smtp_provider", default=default("smtp_provider"))] = (
         selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=["custom", "gmail"], translation_key="smtp_provider"
+                options=["none", "custom", "gmail"], translation_key="smtp_provider"
             )
         )
     )
@@ -99,7 +99,9 @@ def validate(hass, data, entry_id=None):
         raise ValueError("Select an existing W or kW power sensor")
     if data["control_switch"] and not data.get("charger_switch"):
         raise ValueError("Select a switch before enabling control")
-    if data["auto_email"]:
+    if data.get("smtp_provider") == "none":
+        data["auto_email"] = False
+    elif data["auto_email"]:
         validate_mail(data)
     if data.get("charger_switch"):
         if (

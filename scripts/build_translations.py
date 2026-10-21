@@ -35,7 +35,7 @@ error = {
 step = {
     "title": "EV charging and billing",
     "data": labels,
-    "description": "Configure one customer and dedicated EV power sensor. Enter SMTP settings directly; no email entity is needed. Gmail selects smtp.gmail.com:587 with STARTTLS automatically: enter your Gmail address as username and use a Google app password, not your normal password. Leave sender blank to use the Gmail username. Custom server fields are ignored for Gmail. Switch control and automatic email are optional.",
+    "description": "Configure one customer and dedicated EV power sensor. Choose No email / no SMTP server for local invoices only; leave all server and recipient fields blank. This also disables automatic email and manual retries. For email, enter SMTP settings directly; no email entity is needed. Gmail selects smtp.gmail.com:587 with STARTTLS automatically: enter your Gmail address as username and use a Google app password, not your normal password. Leave sender blank to use the Gmail username. Custom server fields are ignored for Gmail. Switch control and automatic email are optional.",
 }
 translation = {
     "title": "EV ChargePoint",
@@ -43,7 +43,11 @@ translation = {
     "options": {"step": {"init": step}, "error": error},
     "selector": {
         "smtp_provider": {
-            "options": {"custom": "Custom SMTP server", "gmail": "Gmail (Google app password)"}
+            "options": {
+                "none": "No email / no SMTP server",
+                "custom": "Custom SMTP server",
+                "gmail": "Gmail (Google app password)",
+            }
         },
         "schedule_mode": {"options": {"all_day": "All day", "window": "Daily time window"}},
         "smtp_security": {

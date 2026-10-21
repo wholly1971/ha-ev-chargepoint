@@ -19,7 +19,7 @@ Add one integration instance per customer/charger. Select:
 - Currency, price per kWh, monthly fixed fee, and tax percentage.
 - Customer and seller details, including addresses/tax identifiers if needed.
 - Payment instructions.
-- Direct SMTP server settings, customer email address, and automatic monthly email (disabled by default).
+- No email (local invoices only), Gmail, or a custom SMTP server; automatic email is disabled by default.
 - Maximum acceptable age of power readings, default 300 seconds.
 
 Create entries through **Settings → Devices & services → Integrations → Add
@@ -49,6 +49,14 @@ Requires Home Assistant 2026.10 or later.
 
 Manual installation: copy `custom_components/ev_chargepoint` into your Home Assistant
 configuration's `custom_components` directory, restart, and add the integration.
+
+### No email / no SMTP server
+
+Choose **No email / no SMTP server** to track usage and generate printable
+invoices locally without setting up a server, login, sender or customer email.
+This is the default for new entries. Selecting it disables automatic delivery
+and manual email retries, even if old SMTP credentials are still saved. Existing
+Gmail/custom SMTP entries retain their selected provider when updating.
 
 ### Send invoices from Gmail
 
@@ -147,9 +155,13 @@ python -m compileall -q custom_components
 ruff check .
 ```
 
-GitHub Actions also runs HACS validation and hassfest. Brand validation is
-excluded until a brand icon is added; this project is a custom repository, not a
-submission to the HACS default catalogue.
+GitHub Actions also runs HACS validation (including brand assets) and hassfest.
+The integration ships standard and high-resolution icons and logos for light
+and dark themes in `custom_components/ev_chargepoint/brand/`. Home Assistant
+uses these in Devices & services and setup screens. Older HACS versions may
+still display a placeholder because of their brand cache. Printable invoices
+embed the logo, and HTML emails attach it inline without remote tracking images.
+This project is a custom repository, not a submission to the HACS default catalogue.
 
 Before customer use, test in Home Assistant: configuration/options, W and kW
 sensors, restarts, switch schedule and failures, a completed month, incomplete

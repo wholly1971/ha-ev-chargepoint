@@ -17,7 +17,7 @@ DEFAULTS = {
     "customer": "",
     "payment_instructions": "",
     "smtp_host": "",
-    "smtp_provider": "custom",
+    "smtp_provider": "none",
     "smtp_port": 587,
     "smtp_security": "starttls",
     "smtp_username": "",

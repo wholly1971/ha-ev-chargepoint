@@ -87,6 +87,7 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             "schedule_mode": "all_day",
             "control_switch": False,
             "auto_email": True,
+            "smtp_provider": "custom",
             "max_age": 300,
             "seller": "Seller",
             "customer": "Customer",
@@ -176,6 +177,14 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.hass.services.async_call.assert_awaited_once_with(
             "switch", "turn_on", {"entity_id": "switch.ev"}, blocking=True
         )
+
+    async def test_no_email_blocks_automatic_and_manual_delivery(self):
+        self.runtime.config.update(smtp_provider="none", auto_email=True)
+        await self.runtime._invoice_completed(NOW)
+        await self.runtime.async_retry()
+        self.mail.assert_not_called()
+        self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "pending")
+        self.assertIn("2026-01", self.runtime.ledger.data["invoices"])
 
     async def test_disabled_control_never_toggles_switch(self):
         await self.runtime._control(NOW)

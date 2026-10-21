@@ -161,12 +161,21 @@ def invoice_text(invoice):
     return "\n".join(lines)
 
 
-def invoice_html(invoice):
+def invoice_html(invoice, logo_src=None):
+    logo = (
+        '<img alt="EV ChargePoint" style="width:240px;max-width:100%;height:auto" src="'
+        + escape(logo_src, quote=True)
+        + '">'
+        if logo_src
+        else ""
+    )
     return (
         '<!doctype html><html lang="en"><meta charset="utf-8">'
         "<title>EV charging invoice</title><style>body{font:16px system-ui;"
         "max-width:800px;margin:48px auto;padding:24px}pre{white-space:pre-wrap;"
-        "font:inherit;line-height:1.7}</style><body><pre>"
+        "font:inherit;line-height:1.7}</style><body>"
+        + logo
+        + "<pre>"
         + escape(invoice_text(invoice))
         + "</pre></body></html>"
     )

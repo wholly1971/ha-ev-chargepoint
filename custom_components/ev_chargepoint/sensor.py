@@ -46,7 +46,9 @@ class BillingSensor(CoordinatorEntity, SensorEntity):
             return ledger.totals(period)[2] if bucket else "0.00"
         if any(p < period and p not in ledger.data["invoices"] for p in ledger.data["months"]):
             return "review_required"
-        if any(status in ("failed", "sending") for status in ledger.data["delivery"].values()):
+        if self.coordinator.config.get("smtp_provider") != "none" and any(
+            status in ("failed", "sending") for status in ledger.data["delivery"].values()
+        ):
             return "email_attention"
         return "tracking" if ledger.watts is not None else "meter_unavailable"
 

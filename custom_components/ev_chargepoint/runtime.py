@@ -16,6 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from .billing import Ledger, decimal, in_window, invoice_html
 from .const import DEFAULTS, DOMAIN
+from .branding import logo_data_uri
 from .mail import send_invoice
 
 _LOGGER = logging.getLogger(__name__)
@@ -130,10 +131,12 @@ class BillingRuntime(DataUpdateCoordinator):
         if path.exists():
             return
         temporary = path.with_suffix(".tmp")
-        temporary.write_text(invoice_html(invoice), encoding="utf-8")
+        temporary.write_text(invoice_html(invoice, logo_src=logo_data_uri()), encoding="utf-8")
         temporary.replace(path)
 
     async def _send(self, period):
+        if self.config.get("smtp_provider") == "none":
+            return
         invoice = self.ledger.data["invoices"][period]
         # Mark before sending: an interrupted/uncertain attempt is never retried
         # automatically, because the mail server may already have accepted it.

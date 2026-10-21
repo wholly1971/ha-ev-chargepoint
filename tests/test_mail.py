@@ -57,6 +57,10 @@ class MailTests(unittest.TestCase):
             self.assertEqual(message["To"], "customer@example.com")
             self.assertEqual(message["From"], "sender@example.com")
             self.assertIn("text/html", message.as_string())
+            self.assertIn("<ev-chargepoint-logo>", message.as_string())
+            self.assertIn(
+                "cid:ev-chargepoint-logo", message.get_body(preferencelist=("html",)).get_content()
+            )
             self.assertNotIn("secret-app-password", message.as_string())
 
     def test_implicit_tls_uses_verified_context(self):
@@ -118,3 +122,10 @@ class MailTests(unittest.TestCase):
         self.config.update(smtp_provider="gmail", smtp_password="")
         with self.assertRaises(ValueError):
             mail.validate_mail(self.config)
+
+    def test_no_email_never_connects_to_smtp(self):
+        self.config.update(smtp_provider="none", smtp_host="")
+        with patch.object(mail.smtplib, "SMTP") as factory:
+            with self.assertRaises(ValueError):
+                mail.send_invoice(self.config, self.invoice)
+            factory.assert_not_called()

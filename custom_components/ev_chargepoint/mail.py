@@ -6,6 +6,7 @@ import smtplib
 import ssl
 
 from .billing import invoice_html, invoice_text
+from .branding import logo_bytes
 
 
 def smtp_settings(config):
@@ -22,6 +23,8 @@ def smtp_settings(config):
 def validate_mail(config, recipient=None):
     """Validate transport settings without connecting or sending mail."""
     config = smtp_settings(config)
+    if config.get("smtp_provider") == "none":
+        raise ValueError("Email delivery is disabled")
     if config.get("smtp_provider") == "gmail" and (
         not config.get("smtp_username") or not config.get("smtp_password")
     ):
@@ -52,7 +55,17 @@ def send_invoice(config, invoice):
     message["From"] = config["smtp_sender"]
     message["To"] = recipient
     message.set_content(invoice_text(invoice))
-    message.add_alternative(invoice_html(invoice), subtype="html")
+    message.add_alternative(
+        invoice_html(invoice, logo_src="cid:ev-chargepoint-logo"), subtype="html"
+    )
+    message.get_payload()[-1].add_related(
+        logo_bytes(),
+        maintype="image",
+        subtype="png",
+        cid="<ev-chargepoint-logo>",
+        disposition="inline",
+        filename="ev-chargepoint-logo.png",
+    )
     context = ssl.create_default_context()
     security = config.get("smtp_security", "starttls")
     kwargs = {"host": config["smtp_host"], "port": int(config.get("smtp_port", 587)), "timeout": 30}
