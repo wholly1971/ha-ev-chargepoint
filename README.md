@@ -22,8 +22,11 @@ Add one integration instance per customer/charger. Select:
 - Direct SMTP server settings, customer email address, and automatic monthly email (disabled by default).
 - Maximum acceptable age of power readings, default 300 seconds.
 
-All settings can be changed through **Settings → Devices & services → EV ChargePoint
-→ Configure**. Default rate AUD 0.30/kWh is an example; replace it with your rate.
+Create entries through **Settings → Devices & services → Integrations → Add
+integration → EV ChargePoint**. EV ChargePoint is a service integration and is
+not created through the Helpers tab. Add one entry per customer/charger.
+Change an existing entry through **Settings → Devices & services → Integrations
+→ EV ChargePoint → Configure**. Default rate AUD 0.30/kWh is an example; replace it with your rate.
 Rates and fixed fees are tax-exclusive. Currency uses two decimal places.
 
 Haggle can remain installed for AGL history. EV ChargePoint reads the selected live
@@ -37,7 +40,7 @@ Requires Home Assistant 2026.10 or later.
 1. In HACS, open **Custom repositories**.
 2. Add `https://github.com/wholly1971/ha-ev-chargepoint` with category **Integration**.
 3. Download **EV ChargePoint** and restart Home Assistant.
-4. Add **EV ChargePoint** from Settings → Devices & services → Add integration.
+4. Add **EV ChargePoint** from Settings → Devices & services → Integrations → Add integration.
 5. For emails, enter the SMTP hostname, port, security, login, sender address,
    and customer email directly in EV ChargePoint. No separate SMTP integration
    or notification entity is needed. Use STARTTLS (usually 587) or TLS (usually

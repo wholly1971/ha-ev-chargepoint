@@ -4,9 +4,9 @@
   "codeowners": ["@wholly1971"],
   "config_flow": true,
   "documentation": "https://github.com/wholly1971/ha-ev-chargepoint",
-  "integration_type": "helper",
+  "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/wholly1971/ha-ev-chargepoint/issues",
   "requirements": [],
-  "version": "0.2.0"
+  "version": "0.2.1"
 }
