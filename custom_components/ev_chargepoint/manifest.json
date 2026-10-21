@@ -1,0 +1,13 @@
+{
+  "domain": "ev_chargepoint",
+  "name": "EV ChargePoint",
+  "after_dependencies": ["smtp"],
+  "codeowners": ["@wholly1971"],
+  "config_flow": true,
+  "documentation": "https://github.com/wholly1971/ha-ev-chargepoint",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/wholly1971/ha-ev-chargepoint/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

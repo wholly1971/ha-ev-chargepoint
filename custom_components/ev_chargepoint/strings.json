@@ -1,0 +1,71 @@
+{
+  "title": "EV ChargePoint",
+  "config": {
+    "step": {
+      "user": {
+        "title": "EV charging and billing",
+        "data": {
+          "name": "Installation name",
+          "customer": "Customer name and billing details",
+          "seller": "Seller name, address and tax details",
+          "payment_instructions": "Payment instructions and due terms",
+          "power_sensor": "Dedicated EV power sensor (W or kW)",
+          "charger_switch": "Charger control switch (optional)",
+          "email_entity": "SMTP customer recipient (optional)",
+          "schedule_mode": "Billable schedule",
+          "start_time": "Daily start time (inclusive)",
+          "end_time": "Daily stop time (exclusive)",
+          "control_switch": "Automatically control the charger switch",
+          "auto_email": "Automatically email monthly invoices",
+          "currency": "Currency code (e.g. AUD)",
+          "rate": "Price per kWh, excluding tax",
+          "fixed_fee": "Monthly fixed fee, excluding tax",
+          "tax_percent": "Tax percentage",
+          "max_age": "Maximum power reading age in seconds"
+        },
+        "description": "Configure one customer and dedicated EV power sensor. Billing uses calendar months in your Home Assistant timezone. SMTP recipients are configured in the SMTP integration. Switch control and automatic email are optional."
+      }
+    },
+    "error": {
+      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, selected switch/SMTP recipient, three-letter currency, nonnegative rates, tax (0\u2013100), and whole-minute schedule times. Currency cannot change on an existing account."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "EV charging and billing",
+        "data": {
+          "name": "Installation name",
+          "customer": "Customer name and billing details",
+          "seller": "Seller name, address and tax details",
+          "payment_instructions": "Payment instructions and due terms",
+          "power_sensor": "Dedicated EV power sensor (W or kW)",
+          "charger_switch": "Charger control switch (optional)",
+          "email_entity": "SMTP customer recipient (optional)",
+          "schedule_mode": "Billable schedule",
+          "start_time": "Daily start time (inclusive)",
+          "end_time": "Daily stop time (exclusive)",
+          "control_switch": "Automatically control the charger switch",
+          "auto_email": "Automatically email monthly invoices",
+          "currency": "Currency code (e.g. AUD)",
+          "rate": "Price per kWh, excluding tax",
+          "fixed_fee": "Monthly fixed fee, excluding tax",
+          "tax_percent": "Tax percentage",
+          "max_age": "Maximum power reading age in seconds"
+        },
+        "description": "Configure one customer and dedicated EV power sensor. Billing uses calendar months in your Home Assistant timezone. SMTP recipients are configured in the SMTP integration. Switch control and automatic email are optional."
+      }
+    },
+    "error": {
+      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, selected switch/SMTP recipient, three-letter currency, nonnegative rates, tax (0\u2013100), and whole-minute schedule times. Currency cannot change on an existing account."
+    }
+  },
+  "selector": {
+    "schedule_mode": {
+      "options": {
+        "all_day": "All day",
+        "window": "Daily time window"
+      }
+    }
+  }
+}
