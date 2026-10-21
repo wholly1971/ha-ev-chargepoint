@@ -19,7 +19,7 @@ Add one integration instance per customer/charger. Select:
 - Currency, price per kWh, monthly fixed fee, and tax percentage.
 - Customer and seller details, including addresses/tax identifiers if needed.
 - Payment instructions.
-- Optional SMTP recipient entity and automatic monthly email (disabled by default).
+- Direct SMTP server settings, customer email address, and automatic monthly email (disabled by default).
 - Maximum acceptable age of power readings, default 300 seconds.
 
 All settings can be changed through **Settings → Devices & services → EV ChargePoint
@@ -38,11 +38,27 @@ Requires Home Assistant 2026.10 or later.
 2. Add `https://github.com/wholly1971/ha-ev-chargepoint` with category **Integration**.
 3. Download **EV ChargePoint** and restart Home Assistant.
 4. Add **EV ChargePoint** from Settings → Devices & services → Add integration.
-5. For emails, first configure Home Assistant's **SMTP** integration and add the
-   customer as a recipient. Select the resulting `notify` entity in EV ChargePoint.
+5. For emails, enter the SMTP hostname, port, security, login, sender address,
+   and customer email directly in EV ChargePoint. No separate SMTP integration
+   or notification entity is needed. Use STARTTLS (usually 587) or TLS (usually
+   465). Passwords use a masked field and remain in Home Assistant configuration;
+   SMTP credentials are excluded from billing ledgers and invoice files.
 
 Manual installation: copy `custom_components/ev_chargepoint` into your Home Assistant
 configuration's `custom_components` directory, restart, and add the integration.
+
+### Send invoices from Gmail
+
+Choose **Gmail (Google app password)** as the email provider. Enter your full
+Gmail address as the SMTP username and a Google app password in the masked
+password field. Leave the sender blank to use that address. The preset uses
+`smtp.gmail.com`, port `587`, with STARTTLS and certificate verification.
+Custom hostname/port/security fields are ignored when Gmail is selected.
+
+Google requires 2-Step Verification for app passwords; some managed accounts
+do not offer them. See [Google's app-password instructions](https://support.google.com/mail/answer/185833)
+and [SMTP settings](https://support.google.com/mail/answer/7104828).
+No Gmail OAuth connection is included. Automatic email stays off until enabled.
 
 ## How measurement and schedules work
 
@@ -95,16 +111,20 @@ Printable HTML invoices are saved under:
 Open these files from your Home Assistant configuration storage and use the
 browser's Print → Save as PDF if needed. Files are deliberately outside `www`
 and are not exposed as unauthenticated web links. Emails contain the complete
-invoice in plain text; PDF attachments and online payment collection are not
+invoice in plain text and HTML; PDF attachments and online payment collection are not
 included in this version.
 
-Email state `submitted` means the SMTP action returned successfully, not proof
+Email state `submitted` means the SMTP server accepted the message, not proof
 of delivery to the recipient. Failed or interrupted (`sending`) attempts are
 not automatically retried. **Retry pending or uncertain invoice emails** retries
 all pending/failed/uncertain emails even if automatic email is disabled. Check
 the mailbox before retrying uncertain sends, since they may have arrived.
-The email target is saved with the invoice, so a later customer change cannot
-redirect old invoices. If that SMTP entity is deleted, restore it before retrying.
+The customer email address is saved with the invoice, so a later customer
+change cannot redirect old invoices. SMTP transport settings use the current
+configuration, allowing password/server changes before retrying. Version 0.1
+notification-entity settings are no longer used: enter direct SMTP settings in
+Configure after updating. Previously issued invoices without a customer email
+remain manual records and cannot be automatically redirected or emailed.
 
 ## Storage and removal
 
@@ -133,4 +153,4 @@ sensors, restarts, switch schedule and failures, a completed month, incomplete
 month approval, SMTP success/failure/uncertain retry, and backup restoration.
 
 References: [HACS packaging](https://www.hacs.dev/docs/publish/integration/),
-[SMTP setup](https://www.home-assistant.io/integrations/smtp/).
+[Python SMTP transport](https://docs.python.org/3/library/smtplib.html).

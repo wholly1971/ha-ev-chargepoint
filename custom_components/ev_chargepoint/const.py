@@ -16,4 +16,12 @@ DEFAULTS = {
     "seller": "",
     "customer": "",
     "payment_instructions": "",
+    "smtp_host": "",
+    "smtp_provider": "custom",
+    "smtp_port": 587,
+    "smtp_security": "starttls",
+    "smtp_username": "",
+    "smtp_password": "",
+    "smtp_sender": "",
+    "customer_email": "",
 }

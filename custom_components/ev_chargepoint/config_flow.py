@@ -7,10 +7,10 @@ import probatio as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
-from homeassistant.helpers import entity_registry as er
 
 from .billing import decimal
 from .const import DEFAULTS, DOMAIN
+from .mail import validate_mail
 
 
 def schema(values):
@@ -36,13 +36,26 @@ def schema(values):
         else vol.Optional("charger_switch")
     )
     fields[switch_key] = selector.EntitySelector(selector.EntitySelectorConfig(domain="switch"))
-    email_key = (
-        vol.Optional("email_entity", default=values["email_entity"])
-        if values.get("email_entity")
-        else vol.Optional("email_entity")
+    fields[vol.Required("smtp_provider", default=default("smtp_provider"))] = (
+        selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=["custom", "gmail"], translation_key="smtp_provider"
+            )
+        )
     )
-    fields[email_key] = selector.EntitySelector(
-        selector.EntitySelectorConfig(domain="notify", integration="smtp")
+    for key in ("smtp_host", "smtp_username", "smtp_password", "smtp_sender", "customer_email"):
+        fields[vol.Optional(key, default=default(key))] = selector.TextSelector(
+            selector.TextSelectorConfig(type="password" if key == "smtp_password" else "text")
+        )
+    fields[vol.Required("smtp_port", default=default("smtp_port"))] = vol.All(
+        vol.Coerce(int), vol.Range(min=1, max=65535)
+    )
+    fields[vol.Required("smtp_security", default=default("smtp_security"))] = (
+        selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=["starttls", "tls"], translation_key="smtp_security"
+            )
+        )
     )
     fields[vol.Required("schedule_mode", default=default("schedule_mode"))] = (
         selector.SelectSelector(
@@ -86,12 +99,8 @@ def validate(hass, data, entry_id=None):
         raise ValueError("Select an existing W or kW power sensor")
     if data["control_switch"] and not data.get("charger_switch"):
         raise ValueError("Select a switch before enabling control")
-    if data["auto_email"] and not data.get("email_entity"):
-        raise ValueError("Select an email notify entity")
-    if data.get("email_entity"):
-        recipient = er.async_get(hass).async_get(data["email_entity"])
-        if recipient is None or recipient.platform != "smtp":
-            raise ValueError("Select an SMTP recipient")
+    if data["auto_email"]:
+        validate_mail(data)
     if data.get("charger_switch"):
         if (
             not data["charger_switch"].startswith("switch.")

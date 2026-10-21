@@ -46,7 +46,7 @@ downtime must be flagged as gaps rather than charged as assumed consumption.
 
 All selections are configurable through Home Assistant. Initial scope uses one
 daily window, one price per kWh, and calendar-month invoices issued on the first
-sample after month end. Email uses a selected SMTP recipient entity. Invoices
+sample after month end. Email uses direct SMTP server settings and a customer email address. Invoices
 are printable HTML plus plain-text email. Payment collection is out of scope.
 
 1. Dedicated EV power sensor confirmed; entity ID will be configured in the UI.
@@ -62,4 +62,4 @@ are printable HTML plus plain-text email. Payment collection is out of scope.
 
 - HACS integration packaging: https://www.hacs.dev/docs/publish/integration/
 - Home Assistant sensor entities: https://developers.home-assistant.io/docs/core/entity/sensor/
-- Home Assistant SMTP integration: https://www.home-assistant.io/integrations/smtp/
+- SMTP transport: https://docs.python.org/3/library/smtplib.html

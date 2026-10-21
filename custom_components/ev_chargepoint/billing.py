@@ -7,6 +7,15 @@ from html import escape
 ZERO = Decimal("0")
 
 
+def billing_settings(config):
+    """Never copy SMTP transport settings or credentials into the ledger."""
+    return {
+        key: value
+        for key, value in config.items()
+        if not key.startswith("smtp_") and key != "email_entity"
+    }
+
+
 def decimal(value):
     result = Decimal(str(value))
     if not result.is_finite():
@@ -58,7 +67,7 @@ class Ledger:
                             "lines": {},
                             "gap_seconds": 0,
                             "partial": False,
-                            "settings": dict(config),
+                            "settings": billing_settings(config),
                         },
                     )
                     if period not in self.data["invoices"]:
@@ -72,7 +81,7 @@ class Ledger:
                             lines[rate] = str(decimal(lines.get(rate, "0")) + energy)
                             bucket["kwh"] = str(decimal(bucket["kwh"]) + energy)
                         # Snapshot final settings for this period, not a future month.
-                        bucket["settings"] = dict(config)
+                        bucket["settings"] = billing_settings(config)
                 cursor = stop
         else:
             period = now.astimezone(zone).strftime("%Y-%m")
@@ -81,7 +90,7 @@ class Ledger:
                 "lines": {},
                 "gap_seconds": 0,
                 "partial": True,
-                "settings": dict(config),
+                "settings": billing_settings(config),
             }
         self.data["cursor"] = now.isoformat()
         self.watts = watts

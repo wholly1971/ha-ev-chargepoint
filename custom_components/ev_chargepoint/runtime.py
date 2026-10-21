@@ -5,17 +5,18 @@ from datetime import datetime, timedelta
 from decimal import InvalidOperation
 import logging
 from pathlib import Path
+import smtplib
 
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .billing import Ledger, decimal, in_window, invoice_html, invoice_text
-from .const import DOMAIN
+from .billing import Ledger, decimal, in_window, invoice_html
+from .const import DEFAULTS, DOMAIN
+from .mail import send_invoice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class BillingRuntime(DataUpdateCoordinator):
     def __init__(self, hass, entry):
         super().__init__(hass, _LOGGER, name=entry.title)
         self.entry = entry
-        self.config = dict(entry.options or entry.data)
+        self.config = {**DEFAULTS, **(entry.options or entry.data)}
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}", private=True)
         self.ledger = Ledger()
         self.lock = asyncio.Lock()
@@ -134,30 +135,13 @@ class BillingRuntime(DataUpdateCoordinator):
 
     async def _send(self, period):
         invoice = self.ledger.data["invoices"][period]
-        # Email recipient is snapshotted with the invoice. Require SMTP, since
-        # generic notify entities may send customer details to other channels.
-        target = invoice["settings"].get("email_entity")
-        entity = er.async_get(self.hass).async_get(target) if target else None
-        if entity is None or entity.platform != "smtp":
-            self.ledger.data["delivery"][period] = "failed"
-            await self.store.async_save(self.ledger.data)
-            return
         # Mark before sending: an interrupted/uncertain attempt is never retried
         # automatically, because the mail server may already have accepted it.
         self.ledger.data["delivery"][period] = "sending"
         await self.store.async_save(self.ledger.data)
         try:
-            await self.hass.services.async_call(
-                "notify",
-                "send_message",
-                {
-                    "entity_id": target,
-                    "title": f"EV charging invoice {invoice['number']}",
-                    "message": invoice_text(invoice),
-                },
-                blocking=True,
-            )
-        except HomeAssistantError:
+            await self.hass.async_add_executor_job(send_invoice, self.config, invoice)
+        except (OSError, smtplib.SMTPException, ValueError):
             self.ledger.data["delivery"][period] = "failed"
             _LOGGER.warning(
                 "Invoice email failed for %s; manual retry required", self.entry.entry_id

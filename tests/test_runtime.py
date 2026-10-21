@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "ev_chargepoint"
@@ -79,7 +79,7 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.config = {
             "name": "Charger",
             "power_sensor": "sensor.ev",
-            "email_entity": "notify.customer",
+            "customer_email": "customer@example.com",
             "currency": "AUD",
             "rate": "0.30",
             "fixed_fee": "0",
@@ -95,6 +95,10 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.hass = SimpleNamespace(services=SimpleNamespace(async_call=AsyncMock()))
         entry = SimpleNamespace(title="Charger", entry_id="entry", data=self.config, options={})
         self.runtime = runtime_module.BillingRuntime(self.hass, entry)
+        self.mail = Mock()
+        mail_patch = patch.object(runtime_module, "send_invoice", self.mail)
+        mail_patch.start()
+        self.addCleanup(mail_patch.stop)
         ledger = self.runtime.ledger
         ledger.data["months"]["2026-01"] = {
             "kwh": "10",
@@ -113,57 +117,57 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     async def test_automatic_invoice_sent_once(self):
         await self.runtime._invoice_completed(NOW)
         await self.runtime._invoice_completed(NOW)
-        self.hass.services.async_call.assert_awaited_once()
+        self.mail.assert_called_once()
         self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "submitted")
 
     async def test_sending_marker_saved_before_external_send(self):
-        async def send(*args, **kwargs):
+        def send(*args, **kwargs):
             saved = self.runtime.store.snapshots[-1]
             self.assertEqual(saved["delivery"]["2026-01"], "sending")
             self.assertIn("2026-01", saved["invoices"])
 
-        self.hass.services.async_call.side_effect = send
+        self.mail.side_effect = send
         await self.runtime._invoice_completed(NOW)
 
     async def test_failure_needs_explicit_retry(self):
-        self.hass.services.async_call.side_effect = HAError("offline")
+        self.mail.side_effect = OSError("offline")
         await self.runtime._invoice_completed(NOW)
         await self.runtime._invoice_completed(NOW)
-        self.hass.services.async_call.assert_awaited_once()
+        self.mail.assert_called_once()
         self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "failed")
-        self.hass.services.async_call.side_effect = None
+        self.mail.side_effect = None
         await self.runtime.async_retry()
-        self.assertEqual(self.hass.services.async_call.await_count, 2)
+        self.assertEqual(self.mail.call_count, 2)
         self.assertEqual(len(self.runtime.ledger.data["invoices"]), 1)
 
     async def test_interrupted_send_is_not_automatically_retried(self):
-        self.hass.services.async_call.side_effect = asyncio.CancelledError()
+        self.mail.side_effect = asyncio.CancelledError()
         with self.assertRaises(asyncio.CancelledError):
             await self.runtime._invoice_completed(NOW)
         self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "sending")
         await self.runtime._invoice_completed(NOW)
-        self.hass.services.async_call.assert_awaited_once()
+        self.mail.assert_called_once()
 
     async def test_incomplete_month_blocks_email_until_approved(self):
         self.runtime.ledger.data["months"]["2026-01"]["gap_seconds"] = 60
         await self.runtime._invoice_completed(NOW)
-        self.hass.services.async_call.assert_not_awaited()
+        self.mail.assert_not_called()
         await self.runtime.async_approve()
-        self.hass.services.async_call.assert_awaited_once()
+        self.mail.assert_called_once()
 
     async def test_auto_email_disabled_keeps_invoice_pending(self):
         self.runtime.config["auto_email"] = False
         await self.runtime._invoice_completed(NOW)
-        self.hass.services.async_call.assert_not_awaited()
+        self.mail.assert_not_called()
         self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "pending")
 
     async def test_email_uses_invoice_recipient_snapshot(self):
         self.runtime.config["auto_email"] = False
         await self.runtime._invoice_completed(NOW)
-        self.runtime.config["email_entity"] = "notify.other_customer"
+        self.runtime.config["customer_email"] = "other@example.com"
         await self.runtime.async_retry()
-        call = self.hass.services.async_call.call_args
-        self.assertEqual(call.args[2]["entity_id"], "notify.customer")
+        call = self.mail.call_args
+        self.assertEqual(call.args[1]["settings"]["customer_email"], "customer@example.com")
 
     async def test_schedule_controls_switch(self):
         self.runtime.config.update(control_switch=True, charger_switch="switch.ev")

@@ -10,7 +10,14 @@ labels = {
     "payment_instructions": "Payment instructions and due terms",
     "power_sensor": "Dedicated EV power sensor (W or kW)",
     "charger_switch": "Charger control switch (optional)",
-    "email_entity": "SMTP customer recipient (optional)",
+    "smtp_host": "SMTP server hostname",
+    "smtp_provider": "Email provider",
+    "smtp_port": "SMTP server port",
+    "smtp_security": "SMTP connection security",
+    "smtp_username": "SMTP login username (optional)",
+    "smtp_password": "SMTP password (for Gmail, use a Google app password)",
+    "smtp_sender": "Sender email address",
+    "customer_email": "Customer invoice email address",
     "schedule_mode": "Billable schedule",
     "start_time": "Daily start time (inclusive)",
     "end_time": "Daily stop time (exclusive)",
@@ -23,19 +30,25 @@ labels = {
     "max_age": "Maximum power reading age in seconds",
 }
 error = {
-    "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, selected switch/SMTP recipient, three-letter currency, nonnegative rates, tax (0–100), and whole-minute schedule times. Currency cannot change on an existing account."
+    "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0–100), and whole-minute schedule times. Currency cannot change on an existing account."
 }
 step = {
     "title": "EV charging and billing",
     "data": labels,
-    "description": "Configure one customer and dedicated EV power sensor. Billing uses calendar months in your Home Assistant timezone. SMTP recipients are configured in the SMTP integration. Switch control and automatic email are optional.",
+    "description": "Configure one customer and dedicated EV power sensor. Enter SMTP settings directly; no email entity is needed. Gmail selects smtp.gmail.com:587 with STARTTLS automatically: enter your Gmail address as username and use a Google app password, not your normal password. Leave sender blank to use the Gmail username. Custom server fields are ignored for Gmail. Switch control and automatic email are optional.",
 }
 translation = {
     "title": "EV ChargePoint",
     "config": {"step": {"user": step}, "error": error},
     "options": {"step": {"init": step}, "error": error},
     "selector": {
-        "schedule_mode": {"options": {"all_day": "All day", "window": "Daily time window"}}
+        "smtp_provider": {
+            "options": {"custom": "Custom SMTP server", "gmail": "Gmail (Google app password)"}
+        },
+        "schedule_mode": {"options": {"all_day": "All day", "window": "Daily time window"}},
+        "smtp_security": {
+            "options": {"starttls": "STARTTLS (usually port 587)", "tls": "TLS (usually port 465)"}
+        },
     },
 }
 root = Path(__file__).resolve().parents[1] / "custom_components" / "ev_chargepoint"

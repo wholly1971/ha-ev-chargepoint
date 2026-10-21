@@ -16,7 +16,7 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
             **DEFAULTS,
             "power_sensor": "sensor.ev_power",
             "charger_switch": "switch.charger",
-            "email_entity": "notify.customer",
+            "customer_email": "customer@example.com",
             "customer": "Customer",
             "seller": "Seller",
         }
