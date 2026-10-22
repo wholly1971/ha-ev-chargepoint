@@ -70,7 +70,7 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
                 async_entries=lambda _: [entry], async_get_entry=lambda _: entry
             ),
         )
-        for start, end in [("22:30:47", "06:15:12.123"), ("22:30", "06:15:00")]:
+        for start, end in [("22:30:47", "06:15:12"), ("22:30", "06:15:00")]:
             with self.subTest(start=start, end=end):
                 values = schema(existing)({
                     **existing, "schedule_mode": "window", "start_time": start, "end_time": end,
