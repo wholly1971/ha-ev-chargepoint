@@ -5,6 +5,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .reporting import ledger_summary
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -56,11 +57,4 @@ class BillingSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         if self.kind != "status":
             return None
-        data = self.coordinator.ledger.data
-        return {
-            "invoice_delivery": dict(data["delivery"]),
-            "months": {
-                period: {"gap_seconds": bucket["gap_seconds"], "partial": bucket["partial"]}
-                for period, bucket in data["months"].items()
-            },
-        }
+        return ledger_summary(self.coordinator.ledger)

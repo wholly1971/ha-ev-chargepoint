@@ -149,6 +149,42 @@ an instance just to change a tariff; use Configure instead.
 
 ## Development
 
+### Operations dashboard reporting
+
+The status sensor now exposes monthly kWh, subtotal, tax, total, currency and
+invoice numbers, plus issued-invoice summaries. Customer details, payment
+instructions and SMTP configuration are excluded from these state attributes.
+Monthly values come from the persisted ledger; they are not inferred from
+Recorder samples or the current tariff.
+
+New samples also persist calendar-day billable kWh, energy cost (excluding
+monthly fees and tax), and gap seconds in the existing private ledger. Existing
+ledgers migrate without backfilling or changing previously issued invoices.
+
+Authenticated **administrator-only** WebSocket commands provide:
+
+- `ev_chargepoint/daily` with `entry_id` and `month` (`YYYY-MM`): one month of
+  daily ledger buckets, with `historical_backfill: false`.
+- `ev_chargepoint/invoice` with `entry_id` and `period` (`YYYY-MM`): printable
+  HTML for an already issued immutable invoice snapshot. This reads no
+  caller-selected file paths and creates no public invoice URLs.
+
+`dashboard/chargeport-card.js` is a self-contained Lovelace module. Register it
+as a dashboard resource and use `custom:chargeport-operations-card`. Its daily
+sensor tables use authenticated Recorder history, keep valid zero samples, and
+omit unknown/unavailable values. It displays explicit empty and unsupported
+states rather than inventing historical billing totals or invoices. Configure
+the entity IDs and entry ID for the relevant charger. Invoice HTML downloads
+require the reporting upgrade and an administrator session.
+
+The module supports overview, daily activity, monthly billing, invoices,
+requirements, and CSV export. Daily min/max/last readings are **not** daily
+energy consumption or charging-session counts. Recorder retention still applies
+to raw sensor history; durable daily billing buckets are separate evidence.
+
+An integration update requires a Home Assistant restart to load the Python
+changes. Include the existing billing ledger and invoice folder in backups.
+
 ```sh
 python -m unittest discover -s tests -v
 python -m compileall -q custom_components
