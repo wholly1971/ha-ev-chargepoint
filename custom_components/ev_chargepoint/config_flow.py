@@ -76,55 +76,77 @@ def schema(values):
     return vol.Schema(fields)
 
 
+class ConfigValidationError(ValueError):
+    """An actionable form error attached to the field that needs attention."""
+
+    def __init__(self, field, code):
+        self.field = field
+        self.code = code
+        super().__init__(code)
+
+
 def validate(hass, data, entry_id=None):
     """Validate selections and prevent accidental double billing/control."""
     for key in ("rate", "fixed_fee", "tax_percent"):
-        if decimal(data[key]) < 0:
-            raise ValueError("Negative billing value")
+        try:
+            if decimal(data[key]) < 0:
+                raise ValueError("Negative billing value")
+        except (ValueError, InvalidOperation) as exc:
+            raise ConfigValidationError(key, "invalid_amount") from exc
     if decimal(data["tax_percent"]) > 100:
-        raise ValueError("Tax must be between 0 and 100")
+        raise ConfigValidationError("tax_percent", "invalid_tax")
+    data["currency"] = data["currency"].strip().upper()
     if (
         len(data["currency"]) != 3
         or not data["currency"].isascii()
         or not data["currency"].isalpha()
     ):
-        raise ValueError("Use a three-letter currency code")
+        raise ConfigValidationError("currency", "invalid_currency")
     data["currency"] = data["currency"].upper()
     for key in ("start_time", "end_time"):
-        parsed = time.fromisoformat(data[key])
-        if parsed.second or parsed.microsecond:
-            raise ValueError("Schedule uses whole minutes")
+        try:
+            parsed = time.fromisoformat(data[key])
+            if parsed.tzinfo is not None:
+                raise ValueError("Use a local time")
+        except (TypeError, ValueError) as exc:
+            raise ConfigValidationError(key, "invalid_time") from exc
+        # Billing and switch control both operate at minute precision. The HA
+        # time selector accepts seconds, so normalize instead of rejecting it.
+        data[key] = parsed.replace(second=0, microsecond=0).isoformat()
     state = hass.states.get(data["power_sensor"])
     if state is None or state.attributes.get("unit_of_measurement") not in ("W", "kW"):
-        raise ValueError("Select an existing W or kW power sensor")
+        raise ConfigValidationError("power_sensor", "invalid_power_sensor")
     if data["control_switch"] and not data.get("charger_switch"):
-        raise ValueError("Select a switch before enabling control")
+        raise ConfigValidationError("charger_switch", "switch_required")
     if data.get("smtp_provider") == "none":
         data["auto_email"] = False
     elif data["auto_email"]:
-        validate_mail(data)
+        try:
+            validate_mail(data)
+        except ValueError as exc:
+            raise ConfigValidationError("auto_email", "invalid_email") from exc
     if data.get("charger_switch"):
         if (
             not data["charger_switch"].startswith("switch.")
             or hass.states.get(data["charger_switch"]) is None
         ):
-            raise ValueError("Select an existing switch")
+            raise ConfigValidationError("charger_switch", "invalid_switch")
     if entry_id:
         entry = hass.config_entries.async_get_entry(entry_id)
         if entry and data["currency"] != (entry.options or entry.data)["currency"]:
-            raise ValueError("Currency cannot change on an existing billing account")
+            raise ConfigValidationError("currency", "currency_locked")
     for entry in hass.config_entries.async_entries(DOMAIN):
         if entry.entry_id == entry_id:
             continue
         other = entry.options or entry.data
         if other["power_sensor"] == data["power_sensor"]:
-            raise ValueError("This sensor is already assigned")
+            raise ConfigValidationError("power_sensor", "sensor_assigned")
         if (
             data["control_switch"]
             and other.get("control_switch")
             and data["charger_switch"] == other.get("charger_switch")
         ):
-            raise ValueError("This switch is already controlled")
+            raise ConfigValidationError("charger_switch", "switch_assigned")
 
 
 class EVBillingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -135,6 +157,8 @@ class EVBillingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 validate(self.hass, user_input)
+            except ConfigValidationError as exc:
+                errors[exc.field] = exc.code
             except (ValueError, InvalidOperation):
                 errors["base"] = "invalid_config"
             else:
@@ -155,6 +179,8 @@ class EVBillingOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             try:
                 validate(self.hass, user_input, self.config_entry.entry_id)
+            except ConfigValidationError as exc:
+                errors[exc.field] = exc.code
             except (ValueError, InvalidOperation):
                 errors["base"] = "invalid_config"
             else:

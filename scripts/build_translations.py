@@ -30,12 +30,23 @@ labels = {
     "max_age": "Maximum power reading age in seconds",
 }
 error = {
-    "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0–100), and whole-minute schedule times. Currency cannot change on an existing account."
+    "invalid_time": "Choose a valid local time. Times are saved to the minute.",
+    "invalid_amount": "Enter a nonnegative number (for example 0.08).",
+    "invalid_tax": "Enter a tax percentage between 0 and 100.",
+    "invalid_currency": "Enter a three-letter currency code, such as AUD.",
+    "invalid_power_sensor": "Select an existing power sensor measured in W or kW.",
+    "switch_required": "Select a charger switch before enabling automatic control.",
+    "invalid_switch": "Select an existing switch or clear the optional switch field.",
+    "invalid_email": "Complete the email provider, login, sender and customer email settings, or turn off automatic email.",
+    "currency_locked": "Currency cannot change on an existing billing account.",
+    "sensor_assigned": "This power sensor is already assigned to another EV ChargePoint account.",
+    "switch_assigned": "This switch is already controlled by another EV ChargePoint account.",
+    "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0–100), and valid schedule times. Currency cannot change on an existing account."
 }
 step = {
     "title": "EV charging and billing",
     "data": labels,
-    "description": "Configure one customer and dedicated EV power sensor. Choose No email / no SMTP server for local invoices only; leave all server and recipient fields blank. This also disables automatic email and manual retries. For email, enter SMTP settings directly; no email entity is needed. Gmail selects smtp.gmail.com:587 with STARTTLS automatically: enter your Gmail address as username and use a Google app password, not your normal password. Leave sender blank to use the Gmail username. Custom server fields are ignored for Gmail. Switch control and automatic email are optional.",
+    "description": "Configure one customer and dedicated EV power sensor. Choose No email / no SMTP server for local invoices only; leave all server and recipient fields blank. This also disables automatic email and manual retries. For email, enter SMTP settings directly; no email entity is needed. Gmail selects smtp.gmail.com:587 with STARTTLS automatically: enter your Gmail address as username and use a Google app password, not your normal password. Leave sender blank to use the Gmail username. Custom server fields are ignored for Gmail. Switch control and automatic email are optional. Schedule times are saved to the minute; seconds are ignored.",
 }
 translation = {
     "title": "EV ChargePoint",
