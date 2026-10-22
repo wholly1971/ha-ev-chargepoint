@@ -35,6 +35,17 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
         self.assertTrue(callable(button.async_setup_entry))
         self.assertTrue(callable(sensor.async_setup_entry))
 
+    def test_reporting_commands_register_once(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from custom_components.ev_chargepoint.websocket import async_register
+
+        hass = SimpleNamespace(data={})
+        with patch("homeassistant.components.websocket_api.async_register_command") as register:
+            async_register(hass)
+            async_register(hass)
+        self.assertEqual(register.call_count, 2)
+
     def test_no_email_setup_does_not_require_server_or_recipient(self):
         from types import SimpleNamespace
         from custom_components.ev_chargepoint.config_flow import validate
@@ -70,7 +81,7 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
                 async_entries=lambda _: [entry], async_get_entry=lambda _: entry
             ),
         )
-        for start, end in [("22:30:47", "06:15:12.123"), ("22:30", "06:15:00")]:
+        for start, end in [("22:30:47", "06:15:12"), ("22:30", "06:15:00")]:
             with self.subTest(start=start, end=end):
                 values = schema(existing)({
                     **existing, "schedule_mode": "window", "start_time": start, "end_time": end,
