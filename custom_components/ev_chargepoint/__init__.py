@@ -8,6 +8,9 @@ PLATFORMS = [Platform.SENSOR, Platform.BUTTON]
 
 
 async def async_setup_entry(hass, entry):
+    from .websocket import async_register
+
+    async_register(hass)
     runtime = BillingRuntime(hass, entry)
     entry.runtime_data = runtime
     await runtime.async_start()

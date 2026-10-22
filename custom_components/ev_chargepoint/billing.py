@@ -43,6 +43,8 @@ class Ledger:
 
     def __init__(self, data=None):
         self.data = data or {"cursor": None, "months": {}, "invoices": {}, "delivery": {}}
+        # Older ledgers have no daily evidence. Do not invent historical buckets.
+        self.data.setdefault("days", {})
         self.watts = None  # Never extrapolate consumption across a restart.
 
     def advance(self, now, watts, config, zone, valid_previous=True):
@@ -72,14 +74,23 @@ class Ledger:
                     )
                     if period not in self.data["invoices"]:
                         seconds = decimal((stop - cursor).total_seconds())
+                        day = local.strftime("%Y-%m-%d")
+                        daily = self.data["days"].setdefault(
+                            day, {"kwh": "0", "energy_cost": "0", "gap_seconds": 0}
+                        )
                         if self.watts is None or not valid_previous:
                             bucket["gap_seconds"] += float(seconds)
+                            daily["gap_seconds"] += float(seconds)
                         else:
                             energy = self.watts * seconds / Decimal("3600000")
                             rate = str(config["rate"])
                             lines = bucket["lines"]
                             lines[rate] = str(decimal(lines.get(rate, "0")) + energy)
                             bucket["kwh"] = str(decimal(bucket["kwh"]) + energy)
+                            daily["kwh"] = str(decimal(daily["kwh"]) + energy)
+                            daily["energy_cost"] = str(
+                                decimal(daily["energy_cost"]) + energy * decimal(rate)
+                            )
                         # Snapshot final settings for this period, not a future month.
                         bucket["settings"] = billing_settings(config)
                 cursor = stop
