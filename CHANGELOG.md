@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3 — 2026-10-23
+
+- Fix the README logo inside HACS with an absolute HTTPS asset URL.
+- Document the separate HACS 2.0.5 repository-list icon limitation; bundled Home Assistant brand assets remain included.
+
 ## 0.3.2 — 2026-10-23
 
 - Add an explicit Send test email button for SMTP, Gmail app passwords and connected Google Mail, with submission/failure status and a 60-second repeat guard. Tests never create invoices or alter delivery records.
