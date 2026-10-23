@@ -1,18 +1,18 @@
 # EV ChargePoint
 
 <p align="center">
-  <img src="assets/ev-chargepoint-logo.png" alt="EV ChargePoint logo" width="420">
+  <img src="https://raw.githubusercontent.com/wholly1971/ha-ev-chargepoint/main/assets/ev-chargepoint-logo.png" alt="EV ChargePoint logo" width="420">
 </p>
 
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.3.2.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.3.3.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
 readable installed/latest versions. When switching an existing branch install,
-open EV ChargePoint in HACS, choose **Redownload â†’ 0.3.2**, then restart Home
+open EV ChargePoint in HACS, choose **Redownload â†’ 0.3.3**, then restart Home
 Assistant after the download completes. Do not repeatedly reinstall while the
 restart-required banner is shown.
 
@@ -271,3 +271,5 @@ After saving email settings, open the EV ChargePoint device and press **Send tes
 The optional pricing module reads three existing Home Assistant sensors: **AGL / Haggle unit rate**, **daily supply charge**, and **solar feed-in rate**. Select them in EV ChargePoint Configure. The dashboard's **AGL pricing** tab shows their values, units, source timestamps and a comparison with the configured EV invoice rate. Unknown/unavailable prices display as unavailable, never zero. Expected units are AUD/kWh and AUD/day.
 
 Haggle remains responsible for AGL authentication and polling. No AGL credentials are copied into EV ChargePoint. The reference prices do not change the EV tariff, copy the household supply charge into EV invoices, or apply feed-in credits. Haggle plan rates include GST; EV tariffs are configured excluding tax. A time-of-use rate must be verified for the charging window before using it for billing. Haggle's meter data commonly lags 24-48 hours; this is not a live spot-price feed. See [Haggle](https://github.com/NaanyaBiz/haggle).
+
+The HACS repository description uses an absolute HTTPS image URL so its logo also renders inside Home Assistant. The repository-list thumbnail is controlled by HACS 2.0.5, which does not use bundled local brand icons; that separate placeholder cannot be changed through EV ChargePoint settings.
