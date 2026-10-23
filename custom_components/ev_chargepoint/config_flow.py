@@ -60,6 +60,9 @@ def schema(values, hass=None):
     fields[vol.Required("max_age", default=default("max_age"))] = vol.All(
         vol.Coerce(int), vol.Range(min=30, max=86400)
     )
+    for key in ("agl_rate_sensor", "agl_supply_sensor", "agl_feed_in_sensor"):
+        marker = vol.Optional(key, default=values[key]) if values.get(key) else vol.Optional(key)
+        fields[marker] = selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
     return vol.Schema(fields)
 
 

@@ -5,6 +5,9 @@ from pathlib import Path
 
 labels = {
     "name": "Installation name",
+    "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+    "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+    "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
     "customer": "Customer name and billing details",
     "seller": "Seller name, address and tax details",
     "payment_instructions": "Payment instructions and due terms",
@@ -45,7 +48,7 @@ error = {
     "currency_locked": "Currency cannot change on an existing billing account.",
     "sensor_assigned": "This power sensor is already assigned to another EV ChargePoint account.",
     "switch_assigned": "This switch is already controlled by another EV ChargePoint account.",
-    "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0â€“100), and valid schedule times. Currency cannot change on an existing account."
+    "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0Ã¢â‚¬â€œ100), and valid schedule times. Currency cannot change on an existing account."
 }
 step = {
     "title": "EV charging and billing",

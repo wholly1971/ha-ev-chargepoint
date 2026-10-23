@@ -66,6 +66,23 @@ def send_invoice(config, invoice):
         disposition="inline",
         filename="ev-chargepoint-logo.png",
     )
+    _submit_message(config, message)
+
+
+def send_test_email(config):
+    """Send a clearly marked test without creating or altering an invoice."""
+    config = smtp_settings(config)
+    validate_mail(config)
+    message = EmailMessage()
+    message["Subject"] = "EV ChargePoint test email"
+    message["From"] = config["smtp_sender"]
+    message["To"] = config["customer_email"]
+    message.set_content("EV ChargePoint email test successful. This is a test message, not an invoice. No charges or billing records were created.")
+    _submit_message(config, message)
+
+
+def _submit_message(config, message):
+    """Shared verified SMTP transport for invoices and explicit tests."""
     context = ssl.create_default_context()
     security = config.get("smtp_security", "starttls")
     kwargs = {"host": config["smtp_host"], "port": int(config.get("smtp_port", 587)), "timeout": 30}
