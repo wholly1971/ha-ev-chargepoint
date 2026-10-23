@@ -59,6 +59,7 @@ def load_runtime():
             DataUpdateCoordinator=FakeCoordinator
         ),
         "homeassistant.util": SimpleNamespace(
+            slugify=lambda value: value.replace("@", "_").replace(".", "_").lower(),
             dt=SimpleNamespace(
                 utcnow=lambda: NOW, as_local=lambda value: value, DEFAULT_TIME_ZONE=timezone.utc
             )
@@ -120,6 +121,25 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         await self.runtime._invoice_completed(NOW)
         self.mail.assert_called_once()
         self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "submitted")
+
+    async def test_gmail_oauth_uses_connected_account_without_smtp(self):
+        self.runtime.config["smtp_provider"] = "gmail_oauth"
+        send = AsyncMock()
+        with patch.object(runtime_module, "async_send_gmail_invoice", send):
+            await self.runtime._invoice_completed(NOW)
+            await self.runtime._invoice_completed(NOW)
+        send.assert_awaited_once()
+        self.mail.assert_not_called()
+        self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "submitted")
+
+    async def test_gmail_authorization_failure_waits_for_explicit_retry(self):
+        self.runtime.config["smtp_provider"] = "gmail_oauth"
+        send = AsyncMock(side_effect=HAError("Reauthorization required"))
+        with patch.object(runtime_module, "async_send_gmail_invoice", send):
+            await self.runtime._invoice_completed(NOW)
+            await self.runtime._invoice_completed(NOW)
+        send.assert_awaited_once()
+        self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "failed")
 
     async def test_sending_marker_saved_before_external_send(self):
         def send(*args, **kwargs):

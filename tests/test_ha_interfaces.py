@@ -8,6 +8,21 @@ import unittest
     importlib.util.find_spec("homeassistant"), "Home Assistant is not installed locally"
 )
 class HomeAssistantInterfaceTests(unittest.TestCase):
+    def test_connected_gmail_requires_authorization_before_automatic_email(self):
+        from types import SimpleNamespace
+        from custom_components.ev_chargepoint.config_flow import validate, ConfigValidationError
+        from custom_components.ev_chargepoint.const import DEFAULTS
+
+        values = {**DEFAULTS, "power_sensor": "sensor.ev_power", "smtp_provider": "gmail_oauth",
+                  "auto_email": True, "customer_email": "customer@example.com"}
+        hass = SimpleNamespace(
+            states=SimpleNamespace(get=lambda _: SimpleNamespace(attributes={"unit_of_measurement": "W"})),
+            config_entries=SimpleNamespace(async_entries=lambda _: []),
+        )
+        with self.assertRaises(ConfigValidationError) as caught:
+            validate(hass, values)
+        self.assertEqual(caught.exception.field, "auto_email")
+
     def test_config_schema_accepts_selections(self):
         from custom_components.ev_chargepoint.config_flow import schema
         from custom_components.ev_chargepoint.const import DEFAULTS
@@ -101,7 +116,11 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
         values = {**DEFAULTS, "power_sensor": "sensor.missing"}
         entry = SimpleNamespace(entry_id="existing", options=values, data={})
         flow = EVBillingOptionsFlow()
-        flow.hass = SimpleNamespace(states=SimpleNamespace(get=lambda _: None))
+        flow.hass = SimpleNamespace(
+            states=SimpleNamespace(get=lambda _: None),
+            config_entries=SimpleNamespace(async_entries=lambda _: []),
+        )
         with patch.object(EVBillingOptionsFlow, "config_entry", new=entry):
             result = asyncio.run(flow.async_step_init({**values, "schedule_mode": "window"}))
         self.assertEqual(result["errors"], {"power_sensor": "invalid_power_sensor"})
+

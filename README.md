@@ -60,6 +60,27 @@ Gmail/custom SMTP entries retain their selected provider when updating.
 
 ### Send invoices from Gmail
 
+For automatic sending without SMTP settings, first connect your Gmail account
+in **Settings → Devices & services → Add integration → Google Mail**. Google
+Mail requires Google OAuth application credentials and browser authorization;
+an email address in your Home Assistant profile is not a sending authorization.
+See [Google Mail setup](https://www.home-assistant.io/integrations/google_mail/).
+
+In EV ChargePoint Configure, select **Gmail — connected account (no SMTP)**,
+choose the account (or use the default when exactly one is connected), enter
+the customer invoice recipient and enable **Automatically email monthly invoices**.
+Leave SMTP fields blank: this mode uses Home Assistant's Google Mail action and
+the connected account's default sender. Multiple accounts require an explicit
+selection. An absent or disconnected account blocks automatic-email setup.
+EV ChargePoint never reads or copies Google's OAuth tokens.
+
+Invoices use the original recipient saved in their immutable snapshot. Missing
+recipient information on an old invoice is not retroactively filled in. Failed
+or interrupted sends still require explicit retry to avoid duplicate emails.
+Messages contain the printable HTML invoice; this mode does not attach a PDF.
+
+The existing app-password method remains available:
+
 Choose **Gmail (Google app password)** as the email provider. Enter your full
 Gmail address as the SMTP username and a Google app password in the masked
 password field. Leave the sender blank to use that address. The preset uses

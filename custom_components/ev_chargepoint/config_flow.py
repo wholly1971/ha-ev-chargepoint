@@ -11,9 +11,10 @@ from homeassistant.helpers import selector
 from .billing import decimal
 from .const import DEFAULTS, DOMAIN
 from .mail import validate_mail
+from .gmail import resolve_gmail, validate_recipient
 
 
-def schema(values):
+def schema(values, hass=None):
     def default(key):
         return values.get(key, DEFAULTS.get(key, ""))
 
@@ -39,9 +40,22 @@ def schema(values):
     fields[vol.Required("smtp_provider", default=default("smtp_provider"))] = (
         selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=["none", "custom", "gmail"], translation_key="smtp_provider"
+                options=["none", "gmail_oauth", "custom", "gmail"], translation_key="smtp_provider"
             )
         )
+    )
+    accounts = [{"value": "", "label": "Default connected Gmail account (one account only)"}]
+    if hass is not None:
+        accounts.extend(
+            {"value": entry.entry_id, "label": entry.title}
+            for entry in hass.config_entries.async_entries("google_mail")
+        )
+    # Retain a disconnected selection so editing unrelated settings is possible.
+    saved = default("gmail_account")
+    if saved and not any(option["value"] == saved for option in accounts):
+        accounts.append({"value": saved, "label": "Previously selected Gmail (reconnect account)"})
+    fields[vol.Optional("gmail_account", default=saved)] = selector.SelectSelector(
+        selector.SelectSelectorConfig(options=accounts)
     )
     for key in ("smtp_host", "smtp_username", "smtp_password", "smtp_sender", "customer_email"):
         fields[vol.Optional(key, default=default(key))] = selector.TextSelector(
@@ -122,7 +136,11 @@ def validate(hass, data, entry_id=None):
         data["auto_email"] = False
     elif data["auto_email"]:
         try:
-            validate_mail(data)
+            if data.get("smtp_provider") == "gmail_oauth":
+                resolve_gmail(hass, data.get("gmail_account", ""))
+                validate_recipient(data.get("customer_email", ""))
+            else:
+                validate_mail(data)
         except ValueError as exc:
             raise ConfigValidationError("auto_email", "invalid_email") from exc
     if data.get("charger_switch"):
@@ -164,7 +182,7 @@ class EVBillingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 return self.async_create_entry(title=user_input["name"], data=user_input)
         return self.async_show_form(
-            step_id="user", data_schema=schema(user_input or {}), errors=errors
+            step_id="user", data_schema=schema(user_input or {}, self.hass), errors=errors
         )
 
     @staticmethod
@@ -188,5 +206,5 @@ class EVBillingOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             errors=errors,
-            data_schema=schema(user_input or self.config_entry.options or self.config_entry.data),
+            data_schema=schema(user_input or self.config_entry.options or self.config_entry.data, self.hass),
         )

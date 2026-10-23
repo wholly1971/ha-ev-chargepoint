@@ -18,6 +18,7 @@ DEFAULTS = {
     "payment_instructions": "",
     "smtp_host": "",
     "smtp_provider": "none",
+    "gmail_account": "",
     "smtp_port": 587,
     "smtp_security": "starttls",
     "smtp_username": "",
