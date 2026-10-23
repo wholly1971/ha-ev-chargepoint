@@ -44,6 +44,35 @@ def schema(values, hass=None):
             )
         )
     )
+    fields[vol.Required("schedule_mode", default=default("schedule_mode"))] = (
+        selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=["all_day", "window"], translation_key="schedule_mode"
+            )
+        )
+    )
+    for key in ("start_time", "end_time"):
+        fields[vol.Required(key, default=default(key))] = selector.TimeSelector()
+    for key in ("control_switch", "auto_email"):
+        fields[vol.Required(key, default=default(key))] = selector.BooleanSelector()
+    for key in ("currency", "rate", "fixed_fee", "tax_percent"):
+        fields[vol.Required(key, default=default(key))] = selector.TextSelector()
+    fields[vol.Required("max_age", default=default("max_age"))] = vol.All(
+        vol.Coerce(int), vol.Range(min=30, max=86400)
+    )
+    return vol.Schema(fields)
+
+
+EMAIL_KEYS = ("gmail_account", "smtp_host", "smtp_username", "smtp_password", "smtp_sender",
+              "customer_email", "smtp_port", "smtp_security")
+
+
+def email_schema(values, hass):
+    """Show only fields used by the selected delivery method."""
+    def default(key):
+        return values.get(key, DEFAULTS.get(key, ""))
+
+    fields = {}
     accounts = [{"value": "", "label": "Default connected Gmail account (one account only)"}]
     if hass is not None:
         accounts.extend(
@@ -71,23 +100,52 @@ def schema(values, hass=None):
             )
         )
     )
-    fields[vol.Required("schedule_mode", default=default("schedule_mode"))] = (
-        selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=["all_day", "window"], translation_key="schedule_mode"
-            )
+    provider = values.get("smtp_provider")
+    keys = {"customer_email"}
+    if provider == "gmail_oauth":
+        keys.add("gmail_account")
+    else:
+        keys.update(("smtp_username", "smtp_password", "smtp_sender"))
+        if provider == "custom":
+            keys.update(("smtp_host", "smtp_port", "smtp_security"))
+    return vol.Schema({key: value for key, value in fields.items() if key.schema in keys})
+
+
+def main_values(values):
+    return {key: value for key, value in values.items() if key not in EMAIL_KEYS}
+
+
+class EmailFlowMixin:
+    """Stage provider selection before requesting provider-specific credentials."""
+
+    async def async_step_email(self, user_input=None):
+        errors = {}
+        if user_input is not None:
+            self._values.update(user_input)
+            try:
+                validate(self.hass, self._values, self._entry_id)
+            except ConfigValidationError as exc:
+                errors["base" if exc.field == "auto_email" else exc.field] = exc.code
+            else:
+                return self.async_create_entry(
+                    title=self._values["name"] if self._entry_id is None else "",
+                    data=self._values,
+                )
+        provider = self._values["smtp_provider"]
+        return self.async_show_form(
+            step_id="email_" + provider,
+            data_schema=email_schema(self._values, self.hass),
+            errors=errors,
         )
-    )
-    for key in ("start_time", "end_time"):
-        fields[vol.Required(key, default=default(key))] = selector.TimeSelector()
-    for key in ("control_switch", "auto_email"):
-        fields[vol.Required(key, default=default(key))] = selector.BooleanSelector()
-    for key in ("currency", "rate", "fixed_fee", "tax_percent"):
-        fields[vol.Required(key, default=default(key))] = selector.TextSelector()
-    fields[vol.Required("max_age", default=default("max_age"))] = vol.All(
-        vol.Coerce(int), vol.Range(min=30, max=86400)
-    )
-    return vol.Schema(fields)
+
+    async def async_step_email_gmail(self, user_input=None):
+        return await self.async_step_email(user_input)
+
+    async def async_step_email_gmail_oauth(self, user_input=None):
+        return await self.async_step_email(user_input)
+
+    async def async_step_email_custom(self, user_input=None):
+        return await self.async_step_email(user_input)
 
 
 class ConfigValidationError(ValueError):
@@ -142,7 +200,7 @@ def validate(hass, data, entry_id=None):
             else:
                 validate_mail(data)
         except ValueError as exc:
-            raise ConfigValidationError("auto_email", "invalid_email") from exc
+            raise ConfigValidationError("auto_email", "invalid_email_" + data.get("smtp_provider", "custom")) from exc
     if data.get("charger_switch"):
         if (
             not data["charger_switch"].startswith("switch.")
@@ -167,20 +225,26 @@ def validate(hass, data, entry_id=None):
             raise ConfigValidationError("charger_switch", "switch_assigned")
 
 
-class EVBillingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class EVBillingConfigFlow(EmailFlowMixin, config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
             try:
-                validate(self.hass, user_input)
+                staged = {**DEFAULTS, **user_input, "auto_email": False}
+                validate(self.hass, staged)
             except ConfigValidationError as exc:
                 errors[exc.field] = exc.code
             except (ValueError, InvalidOperation):
                 errors["base"] = "invalid_config"
             else:
-                return self.async_create_entry(title=user_input["name"], data=user_input)
+                self._entry_id = None
+                self._values = {**staged, "auto_email": user_input["auto_email"]}
+                if self._values["smtp_provider"] != "none":
+                    return await self.async_step_email()
+                self._values["auto_email"] = False
+                return self.async_create_entry(title=user_input["name"], data=self._values)
         return self.async_show_form(
             step_id="user", data_schema=schema(user_input or {}, self.hass), errors=errors
         )
@@ -191,18 +255,24 @@ class EVBillingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return EVBillingOptionsFlow()
 
 
-class EVBillingOptionsFlow(config_entries.OptionsFlow):
+class EVBillingOptionsFlow(EmailFlowMixin, config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         errors = {}
         if user_input is not None:
             try:
-                validate(self.hass, user_input, self.config_entry.entry_id)
+                staged = {**DEFAULTS, **(self.config_entry.options or self.config_entry.data), **user_input, "auto_email": False}
+                validate(self.hass, staged, self.config_entry.entry_id)
             except ConfigValidationError as exc:
                 errors[exc.field] = exc.code
             except (ValueError, InvalidOperation):
                 errors["base"] = "invalid_config"
             else:
-                return self.async_create_entry(title="", data=user_input)
+                self._entry_id = self.config_entry.entry_id
+                self._values = {**staged, "auto_email": user_input["auto_email"]}
+                if self._values["smtp_provider"] != "none":
+                    return await self.async_step_email()
+                self._values["auto_email"] = False
+                return self.async_create_entry(title="", data=self._values)
         return self.async_show_form(
             step_id="init",
             errors=errors,

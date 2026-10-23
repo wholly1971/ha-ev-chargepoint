@@ -7,12 +7,12 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.3.0.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.3.1.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
 readable installed/latest versions. When switching an existing branch install,
-open EV ChargePoint in HACS, choose **Redownload → 0.3.0**, then restart Home
+open EV ChargePoint in HACS, choose **Redownload â†’ 0.3.1**, then restart Home
 Assistant after the download completes. Do not repeatedly reinstall while the
 restart-required banner is shown.
 
@@ -29,11 +29,11 @@ Add one integration instance per customer/charger. Select:
 - No email (local invoices only), Gmail, or a custom SMTP server; automatic email is disabled by default.
 - Maximum acceptable age of power readings, default 300 seconds.
 
-Create entries through **Settings → Devices & services → Integrations → Add
-integration → EV ChargePoint**. EV ChargePoint is a service integration and is
+Create entries through **Settings â†’ Devices & services â†’ Integrations â†’ Add
+integration â†’ EV ChargePoint**. EV ChargePoint is a service integration and is
 not created through the Helpers tab. Add one entry per customer/charger.
-Change an existing entry through **Settings → Devices & services → Integrations
-→ EV ChargePoint → Configure**. Default rate AUD 0.30/kWh is an example; replace it with your rate.
+Change an existing entry through **Settings â†’ Devices & services â†’ Integrations
+â†’ EV ChargePoint â†’ Configure**. Default rate AUD 0.30/kWh is an example; replace it with your rate.
 Rates and fixed fees are tax-exclusive. Currency uses two decimal places.
 
 Haggle can remain installed for AGL history. EV ChargePoint reads the selected live
@@ -47,7 +47,7 @@ Requires Home Assistant 2026.10 or later.
 1. In HACS, open **Custom repositories**.
 2. Add `https://github.com/wholly1971/ha-ev-chargepoint` with category **Integration**.
 3. Download **EV ChargePoint** and restart Home Assistant.
-4. Add **EV ChargePoint** from Settings → Devices & services → Integrations → Add integration.
+4. Add **EV ChargePoint** from Settings â†’ Devices & services â†’ Integrations â†’ Add integration.
 5. For emails, enter the SMTP hostname, port, security, login, sender address,
    and customer email directly in EV ChargePoint. No separate SMTP integration
    or notification entity is needed. Use STARTTLS (usually 587) or TLS (usually
@@ -68,12 +68,12 @@ Gmail/custom SMTP entries retain their selected provider when updating.
 ### Send invoices from Gmail
 
 For automatic sending without SMTP settings, first connect your Gmail account
-in **Settings → Devices & services → Add integration → Google Mail**. Google
+in **Settings â†’ Devices & services â†’ Add integration â†’ Google Mail**. Google
 Mail requires Google OAuth application credentials and browser authorization;
 an email address in your Home Assistant profile is not a sending authorization.
 See [Google Mail setup](https://www.home-assistant.io/integrations/google_mail/).
 
-In EV ChargePoint Configure, select **Gmail — connected account (no SMTP)**,
+In EV ChargePoint Configure, select **Gmail â€” connected account (no SMTP)**,
 choose the account (or use the default when exactly one is connected), enter
 the customer invoice recipient and enable **Automatically email monthly invoices**.
 Leave SMTP fields blank: this mode uses Home Assistant's Google Mail action and
@@ -148,7 +148,7 @@ Printable HTML invoices are saved under:
 ```
 
 Open these files from your Home Assistant configuration storage and use the
-browser's Print → Save as PDF if needed. Files are deliberately outside `www`
+browser's Print â†’ Save as PDF if needed. Files are deliberately outside `www`
 and are not exposed as unauthenticated web links. Emails contain the complete
 invoice in plain text and HTML; PDF attachments and online payment collection are not
 included in this version.
@@ -257,3 +257,7 @@ releases are not overwritten. The manifest is the package version source; no
 second hard-coded version needs editing. Release ZIPs contain only
 `custom_components/ev_chargepoint/` and its brand images, never local billing
 records, credentials, repository tooling or tests.
+
+### Email setup steps
+
+Choose the email provider on the billing form and submit to continue. The next screen shows only that provider’s settings. For **Gmail (Google app password)**, enter the Gmail address as login username, the Google-generated app password, and the invoice recipient. Leave sender blank to use the login address. This method does not require the Google Mail integration or a connected-account selection. **Gmail - connected account** is a separate OAuth method. Configuration validates fields without sending a test email.
