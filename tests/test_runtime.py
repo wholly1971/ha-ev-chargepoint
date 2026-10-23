@@ -210,6 +210,49 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         await self.runtime._control(NOW)
         self.hass.services.async_call.assert_not_awaited()
 
+    async def test_test_email_does_not_mutate_ledger_or_require_auto_email(self):
+        before = deepcopy(self.runtime.ledger.data)
+        self.runtime.config["auto_email"] = False
+        send = Mock()
+        with patch.object(runtime_module, "send_test_email", send):
+            await self.runtime.async_test_email()
+        send.assert_called_once_with(self.runtime.config)
+        self.assertEqual(self.runtime.email_test["status"], "submitted")
+        self.assertEqual(self.runtime.ledger.data, before)
+        self.assertEqual(self.runtime.store.snapshots, [])
+        self.mail.assert_not_called()
+
+    async def test_test_email_failure_is_visible_and_not_retried(self):
+        send = Mock(side_effect=OSError("offline"))
+        with patch.object(runtime_module, "send_test_email", send):
+            with self.assertRaises(HAError):
+                await self.runtime.async_test_email()
+        self.assertEqual(self.runtime.email_test["status"], "failed")
+        send.assert_called_once()
+
+    async def test_test_email_has_repeat_guard(self):
+        send = Mock()
+        with patch.object(runtime_module, "send_test_email", send):
+            await self.runtime.async_test_email()
+            with self.assertRaises(HAError):
+                await self.runtime.async_test_email()
+        send.assert_called_once()
+
+    async def test_test_email_disabled_provider_cannot_send(self):
+        self.runtime.config["smtp_provider"] = "none"
+        send = Mock()
+        with patch.object(runtime_module, "send_test_email", send):
+            with self.assertRaises(HAError):
+                await self.runtime.async_test_email()
+        send.assert_not_called()
+
+    async def test_test_email_uses_connected_account_transport(self):
+        self.runtime.config["smtp_provider"] = "gmail_oauth"
+        send = AsyncMock()
+        with patch.object(runtime_module, "async_send_gmail_test", send):
+            await self.runtime.async_test_email()
+        send.assert_awaited_once_with(self.hass, self.runtime.config)
+
 
 if __name__ == "__main__":
     unittest.main()

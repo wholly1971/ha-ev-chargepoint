@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 — 2026-10-23
+
+- Add an explicit Send test email button for SMTP, Gmail app passwords and connected Google Mail, with submission/failure status and a 60-second repeat guard. Tests never create invoices or alter delivery records.
+- Add an optional AGL/Haggle reference-pricing module with unit rate, daily supply charge and solar feed-in rate sensor selections. Invoice tariffs remain unchanged.
+- Add a pricing tab and email-test controls to the operations dashboard, keeping the live charger graph.
+
 ## 0.3.1 — 2026-10-23
 
 - Separate email setup by provider so Gmail app-password setup never asks for a connected Google Mail account.

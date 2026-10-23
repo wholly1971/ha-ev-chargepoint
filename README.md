@@ -7,12 +7,12 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.3.1.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.3.2.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
 readable installed/latest versions. When switching an existing branch install,
-open EV ChargePoint in HACS, choose **Redownload â†’ 0.3.1**, then restart Home
+open EV ChargePoint in HACS, choose **Redownload â†’ 0.3.2**, then restart Home
 Assistant after the download completes. Do not repeatedly reinstall while the
 restart-required banner is shown.
 
@@ -261,3 +261,13 @@ records, credentials, repository tooling or tests.
 ### Email setup steps
 
 Choose the email provider on the billing form and submit to continue. The next screen shows only that provider’s settings. For **Gmail (Google app password)**, enter the Gmail address as login username, the Google-generated app password, and the invoice recipient. Leave sender blank to use the login address. This method does not require the Google Mail integration or a connected-account selection. **Gmail - connected account** is a separate OAuth method. Configuration validates fields without sending a test email.
+
+### Test email
+
+After saving email settings, open the EV ChargePoint device and press **Send test email**, or use the button on the operations dashboard's Invoices tab. It sends one clearly marked test to the configured invoice recipient, even with automatic monthly email off. It does not create an invoice, approve a month, or retry invoice emails. Results appear in billing-status attributes and the dashboard: **submitted** means accepted by the mail provider, not confirmed inbox delivery. Failures show an error and are not retried automatically. Wait 60 seconds between tests. No test email is sent during installation or configuration.
+
+### AGL pricing module through Haggle
+
+The optional pricing module reads three existing Home Assistant sensors: **AGL / Haggle unit rate**, **daily supply charge**, and **solar feed-in rate**. Select them in EV ChargePoint Configure. The dashboard's **AGL pricing** tab shows their values, units, source timestamps and a comparison with the configured EV invoice rate. Unknown/unavailable prices display as unavailable, never zero. Expected units are AUD/kWh and AUD/day.
+
+Haggle remains responsible for AGL authentication and polling. No AGL credentials are copied into EV ChargePoint. The reference prices do not change the EV tariff, copy the household supply charge into EV invoices, or apply feed-in credits. Haggle plan rates include GST; EV tariffs are configured excluding tax. A time-of-use rate must be verified for the charging window before using it for billing. Haggle's meter data commonly lags 24-48 hours; this is not a live spot-price feed. See [Haggle](https://github.com/NaanyaBiz/haggle).

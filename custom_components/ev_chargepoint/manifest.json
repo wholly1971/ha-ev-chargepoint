@@ -8,5 +8,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/wholly1971/ha-ev-chargepoint/issues",
   "requirements": [],
-  "version": "0.3.1"
+  "version": "0.3.2"
 }

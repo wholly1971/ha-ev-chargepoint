@@ -6,6 +6,9 @@
         "title": "EV charging and billing",
         "data": {
           "name": "Installation name",
+          "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+          "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+          "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
           "customer": "Customer name and billing details",
           "seller": "Seller name, address and tax details",
           "payment_instructions": "Payment instructions and due terms",
@@ -37,6 +40,9 @@
         "title": "Gmail with Google app password",
         "data": {
           "name": "Installation name",
+          "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+          "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+          "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
           "customer": "Customer name and billing details",
           "seller": "Seller name, address and tax details",
           "payment_instructions": "Payment instructions and due terms",
@@ -68,6 +74,9 @@
         "title": "Connected Google Mail account",
         "data": {
           "name": "Installation name",
+          "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+          "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+          "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
           "customer": "Customer name and billing details",
           "seller": "Seller name, address and tax details",
           "payment_instructions": "Payment instructions and due terms",
@@ -99,6 +108,9 @@
         "title": "Custom SMTP email",
         "data": {
           "name": "Installation name",
+          "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+          "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+          "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
           "customer": "Customer name and billing details",
           "seller": "Seller name, address and tax details",
           "payment_instructions": "Payment instructions and due terms",
@@ -142,7 +154,7 @@
       "currency_locked": "Currency cannot change on an existing billing account.",
       "sensor_assigned": "This power sensor is already assigned to another EV ChargePoint account.",
       "switch_assigned": "This switch is already controlled by another EV ChargePoint account.",
-      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0\u00e2\u20ac\u201c100), and valid schedule times. Currency cannot change on an existing account."
+      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u0153100), and valid schedule times. Currency cannot change on an existing account."
     }
   },
   "options": {
@@ -151,6 +163,9 @@
         "title": "EV charging and billing",
         "data": {
           "name": "Installation name",
+          "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+          "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+          "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
           "customer": "Customer name and billing details",
           "seller": "Seller name, address and tax details",
           "payment_instructions": "Payment instructions and due terms",
@@ -182,6 +197,9 @@
         "title": "Gmail with Google app password",
         "data": {
           "name": "Installation name",
+          "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+          "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+          "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
           "customer": "Customer name and billing details",
           "seller": "Seller name, address and tax details",
           "payment_instructions": "Payment instructions and due terms",
@@ -213,6 +231,9 @@
         "title": "Connected Google Mail account",
         "data": {
           "name": "Installation name",
+          "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+          "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+          "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
           "customer": "Customer name and billing details",
           "seller": "Seller name, address and tax details",
           "payment_instructions": "Payment instructions and due terms",
@@ -244,6 +265,9 @@
         "title": "Custom SMTP email",
         "data": {
           "name": "Installation name",
+          "agl_rate_sensor": "AGL / Haggle unit rate sensor (reference only, optional)",
+          "agl_supply_sensor": "AGL / Haggle daily supply charge sensor (optional)",
+          "agl_feed_in_sensor": "AGL / Haggle solar feed-in rate sensor (optional)",
           "customer": "Customer name and billing details",
           "seller": "Seller name, address and tax details",
           "payment_instructions": "Payment instructions and due terms",
@@ -287,7 +311,7 @@
       "currency_locked": "Currency cannot change on an existing billing account.",
       "sensor_assigned": "This power sensor is already assigned to another EV ChargePoint account.",
       "switch_assigned": "This switch is already controlled by another EV ChargePoint account.",
-      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0\u00e2\u20ac\u201c100), and valid schedule times. Currency cannot change on an existing account."
+      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u0153100), and valid schedule times. Currency cannot change on an existing account."
     }
   },
   "selector": {

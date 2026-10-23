@@ -6,6 +6,7 @@ from decimal import InvalidOperation
 import logging
 from pathlib import Path
 import smtplib
+from time import monotonic
 
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
@@ -17,8 +18,8 @@ from homeassistant.util import dt as dt_util
 from .billing import Ledger, decimal, in_window, invoice_html
 from .const import DEFAULTS, DOMAIN
 from .branding import logo_data_uri
-from .mail import send_invoice
-from .gmail import async_send_invoice as async_send_gmail_invoice
+from .mail import send_invoice, send_test_email
+from .gmail import async_send_invoice as async_send_gmail_invoice, async_send_test_email as async_send_gmail_test
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ class BillingRuntime(DataUpdateCoordinator):
         self.lock = asyncio.Lock()
         self.unsubscribers = []
         self.stopping = False
+        self.email_test_lock = asyncio.Lock()
+        self.email_test = {"status": "not_tested", "attempted_at": None}
+        self.last_email_test = None
 
     async def async_start(self):
         self.ledger = Ledger(await self.store.async_load())
@@ -168,3 +172,28 @@ class BillingRuntime(DataUpdateCoordinator):
                 if status in ("pending", "failed", "sending"):
                     await self._send(period)
             self.async_set_updated_data(self.ledger.data)
+
+    async def async_test_email(self):
+        """Explicit one-message test, independent of automatic invoice delivery."""
+        if self.config.get("smtp_provider") == "none":
+            raise HomeAssistantError("Configure an email provider and recipient first")
+        if self.email_test_lock.locked():
+            raise HomeAssistantError("An email test is already in progress")
+        if self.last_email_test is not None and monotonic() - self.last_email_test < 60:
+            raise HomeAssistantError("Wait 60 seconds before sending another test email")
+        async with self.email_test_lock:
+            self.last_email_test = monotonic()
+            self.email_test = {"status": "sending", "attempted_at": dt_util.utcnow().isoformat()}
+            self.async_set_updated_data(self.ledger.data)
+            try:
+                if self.config.get("smtp_provider") == "gmail_oauth":
+                    await async_send_gmail_test(self.hass, self.config)
+                else:
+                    await self.hass.async_add_executor_job(send_test_email, self.config)
+            except (OSError, smtplib.SMTPException, ValueError, HomeAssistantError) as err:
+                self.email_test["status"] = "failed"
+                raise HomeAssistantError("Test email failed. Check the provider, login/app password and recipient; no automatic retry was made.") from err
+            else:
+                self.email_test["status"] = "submitted"
+            finally:
+                self.async_set_updated_data(self.ledger.data)

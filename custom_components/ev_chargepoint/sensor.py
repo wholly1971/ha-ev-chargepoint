@@ -6,6 +6,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .reporting import ledger_summary
+from .pricing import pricing_snapshot
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -57,4 +58,12 @@ class BillingSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         if self.kind != "status":
             return None
-        return ledger_summary(self.coordinator.ledger)
+        return {
+            **ledger_summary(self.coordinator.ledger),
+            "email_test": dict(self.coordinator.email_test),
+            "email_provider": self.coordinator.config.get("smtp_provider", "none"),
+            "automatic_email": self.coordinator.config.get("auto_email", False),
+            "invoice_rate": self.coordinator.config["rate"],
+            "tax_percent": self.coordinator.config["tax_percent"],
+            "agl_pricing": pricing_snapshot(self.hass, self.coordinator.config),
+        }

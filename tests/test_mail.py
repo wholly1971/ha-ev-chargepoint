@@ -129,3 +129,16 @@ class MailTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 mail.send_invoice(self.config, self.invoice)
             factory.assert_not_called()
+
+    def test_test_email_is_marked_and_uses_gmail_preset(self):
+        self.config.update(smtp_provider="gmail", smtp_sender="", smtp_password="abcd efgh ijkl mnop")
+        with patch.object(mail.smtplib, "SMTP") as factory:
+            smtp = factory.return_value.__enter__.return_value
+            smtp.send_message.return_value = {}
+            mail.send_test_email(self.config)
+            message = smtp.send_message.call_args.args[0]
+            self.assertEqual(message["Subject"], "EV ChargePoint test email")
+            self.assertEqual(message["To"], self.config["customer_email"])
+            self.assertIn("not an invoice", message.get_content())
+            self.assertEqual(factory.call_args.kwargs["host"], "smtp.gmail.com")
+            smtp.login.assert_called_once_with("sender@example.com", "abcdefghijklmnop")

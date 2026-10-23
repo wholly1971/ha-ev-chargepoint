@@ -7,7 +7,7 @@ from .const import DOMAIN
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    async_add_entities(BillingButton(entry, kind) for kind in ("approve", "retry"))
+    async_add_entities(BillingButton(entry, kind) for kind in ("approve", "retry", "test_email"))
 
 
 class BillingButton(ButtonEntity):
@@ -18,15 +18,19 @@ class BillingButton(ButtonEntity):
         self.runtime = entry.runtime_data
         self.kind = kind
         self._attr_unique_id = f"{entry.entry_id}_{kind}"
-        self._attr_name = (
-            "Approve all incomplete completed months"
-            if kind == "approve"
-            else "Retry pending or uncertain invoice emails"
-        )
+        self._attr_name = {
+            "approve": "Approve all incomplete completed months",
+            "retry": "Retry pending or uncertain invoice emails",
+            "test_email": "Send test email",
+        }[kind]
+        if kind == "test_email":
+            self._attr_icon = "mdi:email-check-outline"
         self._attr_device_info = {"identifiers": {(DOMAIN, entry.entry_id)}}
 
     async def async_press(self):
         if self.kind == "approve":
             await self.runtime.async_approve()
-        else:
+        elif self.kind == "retry":
             await self.runtime.async_retry()
+        else:
+            await self.runtime.async_test_email()

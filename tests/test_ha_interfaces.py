@@ -184,3 +184,18 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
                                                         "customer_email": "recipient@example.com"}))
         self.assertEqual(result["step_id"], "email_gmail")
         self.assertEqual(result["errors"], {"base": "invalid_email_gmail"})
+
+    def test_test_email_button_routes_only_to_explicit_test(self):
+        import asyncio
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock
+        from custom_components.ev_chargepoint.button import BillingButton
+
+        runtime = SimpleNamespace(async_test_email=AsyncMock(), async_approve=AsyncMock(),
+                                  async_retry=AsyncMock())
+        entry = SimpleNamespace(entry_id="entry", runtime_data=runtime)
+        button = BillingButton(entry, "test_email")
+        asyncio.run(button.async_press())
+        runtime.async_test_email.assert_awaited_once()
+        runtime.async_approve.assert_not_awaited()
+        runtime.async_retry.assert_not_awaited()

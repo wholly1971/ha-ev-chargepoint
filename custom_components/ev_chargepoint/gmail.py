@@ -38,12 +38,26 @@ async def async_send_invoice(hass, config, invoice):
     recipient = invoice["settings"].get("customer_email", "")
     validate_recipient(recipient)
     service = resolve_gmail(hass, config.get("gmail_account", ""))
+    await _async_submit(hass, service, recipient,
+                        f"EV ChargePoint invoice {invoice['number']}", invoice_html(invoice))
+
+
+async def async_send_test_email(hass, config):
+    """Send one explicit test using the configured account and recipient."""
+    recipient = config.get("customer_email", "")
+    validate_recipient(recipient)
+    service = resolve_gmail(hass, config.get("gmail_account", ""))
+    await _async_submit(hass, service, recipient, "EV ChargePoint test email",
+                        "<p>EV ChargePoint email test successful.</p><p>This is a test message, not an invoice. No charges or billing records were created.</p>")
+
+
+async def _async_submit(hass, service, recipient, title, message):
     try:
         await hass.services.async_call(
             "notify", service,
             {
-                "title": f"EV ChargePoint invoice {invoice['number']}",
-                "message": invoice_html(invoice),
+                "title": title,
+                "message": message,
                 "target": [recipient],
                 "data": {"send": True},
             },
