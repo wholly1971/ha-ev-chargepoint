@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.3.0 — 2026-10-23
+## 0.3.1 — 2026-10-23
+
+- Separate email setup by provider so Gmail app-password setup never asks for a connected Google Mail account.
+- Show only relevant email fields in a second setup step and explain provider-specific validation errors.
+- Keep existing billing, schedule and email settings when editing. No email is sent during configuration.
+
+## 0.3.0 â€” 2026-10-23
 
 - Publish numbered GitHub releases so HACS displays `0.3.0` instead of commit hashes.
 - Derive the downloadable package name from the integration manifest version.
