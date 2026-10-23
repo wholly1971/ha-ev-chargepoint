@@ -1,0 +1,66 @@
+name: Publish release
+
+on:
+  workflow_run:
+    workflows: [Validate]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: python scripts/package.py
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const version = JSON.parse(fs.readFileSync('custom_components/ev_chargepoint/manifest.json', 'utf8')).version;
+            if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Expected a semantic release version');
+            const notes = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const heading = `## ${version} `;
+            const start = notes.indexOf(heading);
+            if (start < 0) throw new Error('Missing release notes for ' + version);
+            const next = notes.indexOf('\n## ', start + heading.length);
+            const body = notes.slice(start, next < 0 ? undefined : next).trim();
+            let release;
+            try {
+              release = (await github.rest.repos.getReleaseByTag({...context.repo, tag: version})).data;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              release = (await github.rest.repos.createRelease({
+                ...context.repo, tag_name: version,
+                target_commitish: context.payload.workflow_run.head_sha,
+                name: `EV ChargePoint ${version}`, body,
+                draft: false, prerelease: false, make_latest: 'true'
+              })).data;
+            }
+            const name = `ev-chargepoint-${version}.zip`;
+            const assets = (await github.rest.repos.listReleaseAssets({...context.repo, release_id: release.id})).data;
+            if (!assets.some(asset => asset.name === name)) {
+              const data = fs.readFileSync(`dist/${name}`);
+              await github.rest.repos.uploadReleaseAsset({
+                ...context.repo, release_id: release.id, name, data,
+                headers: {'content-type': 'application/zip', 'content-length': data.length}
+              });
+            }

@@ -7,7 +7,14 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Initial version: live Home Assistant and SMTP testing is still required.**
+**Current release: 0.3.0.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+delivery testing is still required before customer use.
+
+Install a numbered release in HACS, rather than `main` or a commit hash, for
+readable installed/latest versions. When switching an existing branch install,
+open EV ChargePoint in HACS, choose **Redownload → 0.3.0**, then restart Home
+Assistant after the download completes. Do not repeatedly reinstall while the
+restart-required banner is shown.
 
 ## Configure everything in Home Assistant
 
@@ -153,9 +160,9 @@ all pending/failed/uncertain emails even if automatic email is disabled. Check
 the mailbox before retrying uncertain sends, since they may have arrived.
 The customer email address is saved with the invoice, so a later customer
 change cannot redirect old invoices. SMTP transport settings use the current
-configuration, allowing password/server changes before retrying. Version 0.1
-notification-entity settings are no longer used: enter direct SMTP settings in
-Configure after updating. Previously issued invoices without a customer email
+configuration, allowing password/server changes before retrying. Connected Gmail
+uses the currently selected authorized Google Mail account; legacy version 0.1
+notification-entity settings are not reused. Previously issued invoices without a customer email
 remain manual records and cannot be automatically redirected or emailed.
 
 ## Storage and removal
@@ -216,7 +223,21 @@ GitHub Actions also runs HACS validation (including brand assets) and hassfest.
 The integration ships standard and high-resolution icons and logos for light
 and dark themes in `custom_components/ev_chargepoint/brand/`. Home Assistant
 uses these in Devices & services and setup screens. Older HACS versions may
-still display a placeholder because of their brand cache. Printable invoices
+still display a placeholder because their update entities use the public brands
+CDN instead of the bundled assets. The logo is included in every installation ZIP.
+For an affected update card, an optional Home Assistant customization is:
+
+```yaml
+homeassistant:
+  customize:
+    update.ev_chargepoint_update:
+      entity_picture: https://raw.githubusercontent.com/wholly1971/ha-ev-chargepoint/main/custom_components/ev_chargepoint/brand/icon.png
+```
+
+Merge this into the existing `homeassistant`/`customize` configuration; do not
+create duplicate YAML keys. Preserve any existing customization includes. This
+changes only the image and does not replace the HACS update entity. Standard
+integration screens use the bundled `brand/` assets automatically. Printable invoices
 embed the logo, and HTML emails attach it inline without remote tracking images.
 This project is a custom repository, not a submission to the HACS default catalogue.
 
@@ -226,3 +247,13 @@ month approval, SMTP success/failure/uncertain retry, and backup restoration.
 
 References: [HACS packaging](https://www.hacs.dev/docs/publish/integration/),
 [Python SMTP transport](https://docs.python.org/3/library/smtplib.html).
+
+### Release process
+
+Update `manifest.json` and add the matching version section to `CHANGELOG.md`.
+After the main-branch Validate workflow passes, Publish release creates that
+numbered GitHub release and attaches `ev-chargepoint-<version>.zip`. Existing
+releases are not overwritten. The manifest is the package version source; no
+second hard-coded version needs editing. Release ZIPs contain only
+`custom_components/ev_chargepoint/` and its brand images, never local billing
+records, credentials, repository tooling or tests.
