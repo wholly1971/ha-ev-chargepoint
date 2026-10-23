@@ -116,7 +116,11 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
         values = {**DEFAULTS, "power_sensor": "sensor.missing"}
         entry = SimpleNamespace(entry_id="existing", options=values, data={})
         flow = EVBillingOptionsFlow()
-        flow.hass = SimpleNamespace(states=SimpleNamespace(get=lambda _: None))
+        flow.hass = SimpleNamespace(
+            states=SimpleNamespace(get=lambda _: None),
+            config_entries=SimpleNamespace(async_entries=lambda _: []),
+        )
         with patch.object(EVBillingOptionsFlow, "config_entry", new=entry):
             result = asyncio.run(flow.async_step_init({**values, "schedule_mode": "window"}))
         self.assertEqual(result["errors"], {"power_sensor": "invalid_power_sensor"})
+
