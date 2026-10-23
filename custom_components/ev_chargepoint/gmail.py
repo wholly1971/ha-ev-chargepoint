@@ -3,6 +3,7 @@
 from email.utils import parseaddr
 
 from homeassistant.util import slugify
+from homeassistant.exceptions import HomeAssistantError
 
 from .billing import invoice_html
 
@@ -37,13 +38,18 @@ async def async_send_invoice(hass, config, invoice):
     recipient = invoice["settings"].get("customer_email", "")
     validate_recipient(recipient)
     service = resolve_gmail(hass, config.get("gmail_account", ""))
-    await hass.services.async_call(
-        "notify", service,
-        {
-            "title": f"EV ChargePoint invoice {invoice['number']}",
-            "message": invoice_html(invoice),
-            "target": [recipient],
-            "data": {"send": True},
-        },
-        blocking=True,
-    )
+    try:
+        await hass.services.async_call(
+            "notify", service,
+            {
+                "title": f"EV ChargePoint invoice {invoice['number']}",
+                "message": invoice_html(invoice),
+                "target": [recipient],
+                "data": {"send": True},
+            },
+            blocking=True,
+        )
+    except Exception as err:
+        # Google API/auth exceptions are not all HomeAssistantError subclasses.
+        # Normalize only this external-service boundary; cancellation still propagates.
+        raise HomeAssistantError("Google Mail submission failed; review before retrying") from err

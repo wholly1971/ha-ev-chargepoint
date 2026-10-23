@@ -15,6 +15,7 @@ gmail = importlib.util.module_from_spec(spec)
 with patch.dict(sys.modules, {
     "gmail_test": package,
     "homeassistant": ModuleType("homeassistant"),
+    "homeassistant.exceptions": SimpleNamespace(HomeAssistantError=RuntimeError),
     "homeassistant.util": SimpleNamespace(slugify=lambda value: "sender_gmail_com"),
 }):
     spec.loader.exec_module(gmail)
@@ -67,3 +68,12 @@ class GmailTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await gmail.async_send_invoice(self.hass, {}, {"settings": {}})
         self.hass.services.async_call.assert_not_awaited()
+
+    async def test_provider_failure_is_reported_to_delivery_tracking(self):
+        self.hass.services.async_call.side_effect = KeyError("provider unavailable")
+        with patch.object(gmail, "invoice_html", return_value="Invoice HTML"), self.assertRaisesRegex(RuntimeError, "submission failed"):
+            await gmail.async_send_invoice(self.hass, {}, {
+                "number": "EV-test",
+                "settings": {"customer_email": "customer@example.com"},
+            })
+        self.hass.services.async_call.assert_awaited_once()
