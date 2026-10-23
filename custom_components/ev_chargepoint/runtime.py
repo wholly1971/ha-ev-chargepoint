@@ -18,6 +18,7 @@ from .billing import Ledger, decimal, in_window, invoice_html
 from .const import DEFAULTS, DOMAIN
 from .branding import logo_data_uri
 from .mail import send_invoice
+from .gmail import async_send_invoice as async_send_gmail_invoice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -143,8 +144,11 @@ class BillingRuntime(DataUpdateCoordinator):
         self.ledger.data["delivery"][period] = "sending"
         await self.store.async_save(self.ledger.data)
         try:
-            await self.hass.async_add_executor_job(send_invoice, self.config, invoice)
-        except (OSError, smtplib.SMTPException, ValueError):
+            if self.config.get("smtp_provider") == "gmail_oauth":
+                await async_send_gmail_invoice(self.hass, self.config, invoice)
+            else:
+                await self.hass.async_add_executor_job(send_invoice, self.config, invoice)
+        except (OSError, smtplib.SMTPException, ValueError, HomeAssistantError):
             self.ledger.data["delivery"][period] = "failed"
             _LOGGER.warning(
                 "Invoice email failed for %s; manual retry required", self.entry.entry_id

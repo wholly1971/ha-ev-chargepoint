@@ -18,6 +18,7 @@ labels = {
     "smtp_password": "SMTP password (for Gmail, use a Google app password)",
     "smtp_sender": "Sender email address",
     "customer_email": "Customer invoice email address",
+    "gmail_account": "Connected Gmail sending account",
     "schedule_mode": "Billable schedule",
     "start_time": "Daily start time (inclusive)",
     "end_time": "Daily stop time (exclusive)",
@@ -37,7 +38,7 @@ error = {
     "invalid_power_sensor": "Select an existing power sensor measured in W or kW.",
     "switch_required": "Select a charger switch before enabling automatic control.",
     "invalid_switch": "Select an existing switch or clear the optional switch field.",
-    "invalid_email": "Complete the email provider, login, sender and customer email settings, or turn off automatic email.",
+    "invalid_email": "For connected Gmail, authorize Google Mail, select the account and enter the invoice recipient. For SMTP, complete login and sender settings. Otherwise turn off automatic email.",
     "currency_locked": "Currency cannot change on an existing billing account.",
     "sensor_assigned": "This power sensor is already assigned to another EV ChargePoint account.",
     "switch_assigned": "This switch is already controlled by another EV ChargePoint account.",
@@ -46,7 +47,7 @@ error = {
 step = {
     "title": "EV charging and billing",
     "data": labels,
-    "description": "Configure one customer and dedicated EV power sensor. Choose No email / no SMTP server for local invoices only; leave all server and recipient fields blank. This also disables automatic email and manual retries. For email, enter SMTP settings directly; no email entity is needed. Gmail selects smtp.gmail.com:587 with STARTTLS automatically: enter your Gmail address as username and use a Google app password, not your normal password. Leave sender blank to use the Gmail username. Custom server fields are ignored for Gmail. Switch control and automatic email are optional. Schedule times are saved to the minute; seconds are ignored.",
+    "description": "Configure one customer and dedicated EV power sensor. Choose No email / no SMTP server for local invoices only; leave all server and recipient fields blank. This also disables automatic email and manual retries. For Gmail without SMTP, first connect Google Mail in Home Assistant, select Gmail - connected account, choose your sending account and enter the invoice recipient. The default uses the only connected Gmail account; select explicitly if there are several. SMTP fields are ignored in connected-account mode. Other providers use the settings below. Gmail selects smtp.gmail.com:587 with STARTTLS automatically: enter your Gmail address as username and use a Google app password, not your normal password. Leave sender blank to use the Gmail username. Custom server fields are ignored for Gmail. Switch control and automatic email are optional. Schedule times are saved to the minute; seconds are ignored.",
 }
 translation = {
     "title": "EV ChargePoint",
@@ -58,6 +59,7 @@ translation = {
                 "none": "No email / no SMTP server",
                 "custom": "Custom SMTP server",
                 "gmail": "Gmail (Google app password)",
+                "gmail_oauth": "Gmail - connected account (no SMTP)",
             }
         },
         "schedule_mode": {"options": {"all_day": "All day", "window": "Daily time window"}},
