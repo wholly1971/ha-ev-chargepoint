@@ -1,5 +1,10 @@
 # Changelog
 
+## Dashboard revision 2026.10.24.1 — 2026-10-24
+
+- Add the Revisions dashboard page with installed/latest integration versions, bundled release history, official release links and CSV export.
+- Dashboard-only update; integration package version remains 0.4.0.
+
 ## 0.4.0 — 2026-10-24
 
 - Add configurable Peak, Off Peak, Shoulder 1, Shoulder 2 and EV Night windows, each with a manual rate, optional rate sensor and sensor tax-inclusion setting. Enabled windows must not overlap; overnight windows work.
@@ -24,7 +29,7 @@
 - Show only relevant email fields in a second setup step and explain provider-specific validation errors.
 - Keep existing billing, schedule and email settings when editing. No email is sent during configuration.
 
-## 0.3.0 â€” 2026-10-23
+## 0.3.0 — 2026-10-23
 
 - Publish numbered GitHub releases so HACS displays `0.3.0` instead of commit hashes.
 - Derive the downloadable package name from the integration manifest version.
