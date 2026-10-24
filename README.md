@@ -7,7 +7,7 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.4.0.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.4.1.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
@@ -287,3 +287,9 @@ The **Charge rates** dashboard tab shows configured bands, sources, effective ta
 ### Revisions page
 
 The operations dashboard **Revisions** tab shows the installed and latest integration versions reported by the HACS update entity, plus bundled release history, release links and CSV export. Its dashboard revision is labelled separately from the integration version. If your update entity was renamed, set the card’s optional `update` field to its entity ID. Dashboard revision 2026.10.24.1 adds this page; the integration package remains 0.4.0 and no integration restart is required for this dashboard-only update.
+
+### Manual charge box and current unit price
+
+The Overview page has **Turn charging on**, **Turn charging off** and **Resume schedule**. These use the native **Charging mode** selector, so the scheduler does not immediately undo a manual action. With automatic window control enabled, a manual override ends at the next on/off schedule boundary; Home Assistant restart or integration reload also clears it. With all-day mode, equal start/end times, or automatic switch control disabled, there is no upcoming transition and the override lasts until Resume schedule or restart/reload. If automatic switch control is disabled, Resume schedule releases the override without operating the outlet.
+
+The box shows actual outlet state, power and the active tariff's current charge rate per kWh **including configured invoice tax**. It uses the same manual/sensor/fallback selection as the billing ledger. A dedicated **Current charge rate** sensor exposes the rate plus band and tax-exclusive value. Supply charges and monthly fees are not part of the per-kWh rate. Tariff changes remain prospective and manual charging uses the configured billing scope. The outlet being on does not prove that the vehicle is drawing power.
