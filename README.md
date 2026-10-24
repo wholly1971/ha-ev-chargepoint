@@ -1,5 +1,13 @@
 # EV ChargePoint
 
+[![Open your Home Assistant instance and open EV ChargePoint in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=wholly1971&repository=ha-ev-chargepoint&category=integration)
+
+[![Latest release](https://img.shields.io/github/v/release/wholly1971/ha-ev-chargepoint)](https://github.com/wholly1971/ha-ev-chargepoint/releases/latest)
+[![Validate](https://github.com/wholly1971/ha-ev-chargepoint/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/wholly1971/ha-ev-chargepoint/actions/workflows/validate.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/wholly1971/ha-ev-chargepoint/badge)](https://scorecard.dev/viewer/?uri=github.com/wholly1971/ha-ev-chargepoint)
+
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/wholly1971/ha-ev-chargepoint/main/assets/ev-chargepoint-logo.png" alt="EV ChargePoint logo" width="420">
 </p>
@@ -293,3 +301,13 @@ The operations dashboard **Revisions** tab shows the installed and latest integr
 The Overview page has **Turn charging on**, **Turn charging off** and **Resume schedule**. These use the native **Charging mode** selector, so the scheduler does not immediately undo a manual action. With automatic window control enabled, a manual override ends at the next on/off schedule boundary; Home Assistant restart or integration reload also clears it. With all-day mode, equal start/end times, or automatic switch control disabled, there is no upcoming transition and the override lasts until Resume schedule or restart/reload. If automatic switch control is disabled, Resume schedule releases the override without operating the outlet.
 
 The box shows actual outlet state, power and the active tariff's current charge rate per kWh **including configured invoice tax**. It uses the same manual/sensor/fallback selection as the billing ledger. A dedicated **Current charge rate** sensor exposes the rate plus band and tax-exclusive value. Supply charges and monthly fees are not part of the per-kWh rate. Tariff changes remain prospective and manual charging uses the configured billing scope. The outlet being on does not prove that the vehicle is drawing power.
+
+## Project community and security
+
+- [Contributing guide](CONTRIBUTING.md): development setup, meaningful tests and pull requests.
+- [Code of conduct](CODE_OF_CONDUCT.md): respectful collaboration and reporting concerns.
+- [Security policy](SECURITY.md): supported releases and private vulnerability reporting.
+- [License](LICENSE): the project remains licensed under GNU GPL version 3.
+- [Activity](https://github.com/wholly1971/ha-ev-chargepoint/activity) and [release history](https://github.com/wholly1971/ha-ev-chargepoint/releases).
+
+The badges use live release, CI and OpenSSF data; the Scorecard badge can be unavailable until its first published scan. A Scorecard rating is an automated repository-practice assessment, not certification that the integration is vulnerability-free. OpenSSF Best Practices Passing/Silver/Gold status is not claimed: it requires separate project enrollment and an evidence-based assessment at [bestpractices.dev](https://www.bestpractices.dev/).
