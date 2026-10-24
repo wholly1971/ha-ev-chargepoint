@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1 — 2026-10-25
+
+- Add Manual charge On/Off and Resume schedule controls through a native Charging mode selector. Overrides return to automatic at the next charging-schedule transition and reset on restart/reload.
+- Add a current charge-rate sensor and dashboard display using the active tariff, sensor/fallback source and configured invoice tax.
+- Keep manual control responsive while email submission is running, with a separate control lock.
+
 ## Dashboard revision 2026.10.24.1 — 2026-10-24
 
 - Add the Revisions dashboard page with installed/latest integration versions, bundled release history, official release links and CSV export.

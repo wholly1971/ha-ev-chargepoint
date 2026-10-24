@@ -269,3 +269,60 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(float(bucket["tariffs"]["peak"]["energy_cost"]), 0.0025)
         self.runtime._sample(NOW + timedelta(seconds=60))
         self.assertAlmostEqual(float(bucket["tariffs"]["peak"]["energy_cost"]), 0.0075)
+
+    async def test_manual_on_survives_schedule_tick_outside_window(self):
+        from datetime import timedelta
+        self.runtime.config.update(control_switch=True, charger_switch="switch.ev",
+                                   schedule_mode="window", start_time="06:00:00", end_time="07:00:00")
+        self.hass.states = SimpleNamespace(get=lambda _: SimpleNamespace(state="off"))
+        await self.runtime.async_set_charge_mode("Manual charging on")
+        await self.runtime._control(NOW + timedelta(seconds=30))
+        self.assertEqual(self.runtime.charge_mode, "Manual charging on")
+        self.assertEqual(self.runtime.override_until, NOW.replace(hour=6))
+        self.assertTrue(all(c.args[1] == "turn_on" for c in self.hass.services.async_call.await_args_list))
+        await self.runtime._control(NOW.replace(hour=6))
+        self.assertEqual(self.runtime.charge_mode, "Automatic schedule")
+
+    async def test_manual_off_holds_inside_window_and_expires(self):
+        from datetime import timedelta
+        self.runtime.config.update(control_switch=True, charger_switch="switch.ev",
+                                   schedule_mode="window", start_time="00:00:00", end_time="01:00:00")
+        self.hass.states = SimpleNamespace(get=lambda _: SimpleNamespace(state="on"))
+        await self.runtime.async_set_charge_mode("Manual charging off")
+        await self.runtime._control(NOW + timedelta(seconds=30))
+        self.assertEqual(self.runtime.charge_mode, "Manual charging off")
+        self.assertTrue(all(c.args[1] == "turn_off" for c in self.hass.services.async_call.await_args_list))
+        await self.runtime._control(NOW.replace(hour=1))
+        self.assertEqual(self.runtime.charge_mode, "Automatic schedule")
+
+    async def test_resume_schedule_restores_outside_window_off(self):
+        self.runtime.config.update(control_switch=True, charger_switch="switch.ev",
+                                   schedule_mode="window", start_time="06:00:00", end_time="07:00:00")
+        self.hass.states = SimpleNamespace(get=lambda _: SimpleNamespace(state="on"))
+        self.runtime.charge_mode = "Manual charging on"
+        await self.runtime.async_set_charge_mode("Automatic schedule")
+        self.assertEqual(self.runtime.charge_mode, "Automatic schedule")
+        self.hass.services.async_call.assert_awaited_once_with("switch", "turn_off", {"entity_id":"switch.ev"}, blocking=True)
+
+    async def test_unavailable_switch_rejects_manual_on(self):
+        self.runtime.config["charger_switch"] = "switch.ev"
+        self.hass.states = SimpleNamespace(get=lambda _: SimpleNamespace(state="unavailable"))
+        with self.assertRaises(HAError):
+            await self.runtime.async_set_charge_mode("Manual charging on")
+        self.hass.services.async_call.assert_not_awaited()
+        self.assertEqual(self.runtime.charge_mode, "Automatic schedule")
+
+    async def test_failed_manual_command_does_not_change_mode(self):
+        self.runtime.config["charger_switch"] = "switch.ev"
+        self.hass.states = SimpleNamespace(get=lambda _: SimpleNamespace(state="off"))
+        self.hass.services.async_call.side_effect = HAError("Device offline")
+        with self.assertRaises(HAError):
+            await self.runtime.async_set_charge_mode("Manual charging on")
+        self.assertEqual(self.runtime.charge_mode, "Automatic schedule")
+
+    async def test_manual_control_does_not_wait_for_billing_lock(self):
+        self.runtime.config["charger_switch"] = "switch.ev"
+        self.hass.states = SimpleNamespace(get=lambda _: SimpleNamespace(state="off"))
+        async with self.runtime.lock:
+            await asyncio.wait_for(self.runtime.async_set_charge_mode("Manual charging off"), timeout=1)
+        self.assertEqual(self.runtime.charge_mode, "Manual charging off")

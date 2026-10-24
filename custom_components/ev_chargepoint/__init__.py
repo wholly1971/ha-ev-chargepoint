@@ -4,7 +4,7 @@ from homeassistant.const import Platform
 
 from .runtime import BillingRuntime
 
-PLATFORMS = [Platform.SENSOR, Platform.BUTTON]
+PLATFORMS = [Platform.SENSOR, Platform.BUTTON, Platform.SELECT]
 
 
 async def async_setup_entry(hass, entry):

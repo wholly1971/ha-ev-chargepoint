@@ -1,7 +1,7 @@
 """Resolve selected rate sensors without copying credentials or inferring tariff windows."""
 
 from decimal import InvalidOperation
-from .billing import BAND_NAMES, decimal
+from .billing import BAND_NAMES, decimal, tariff_at
 
 
 def resolve_rates(hass, config):
@@ -33,3 +33,12 @@ def tariff_config(hass, config):
              **{key: config.get("tariff_" + band + "_" + key) for key in ("start", "end", "rate", "sensor", "sensor_includes_tax")},
              "effective_rate": resolved[band]["rate"], "source": resolved[band]["source"]}
             for band, name in BAND_NAMES.items()]
+
+
+def current_charge_rate(hass, config, now):
+    """Current billable unit price with the same resolution used by the ledger."""
+    effective = {**config, "_tariff_rates": resolve_rates(hass, config)}
+    band, name, rate, source = tariff_at(now, effective)
+    inclusive = decimal(rate) * (1 + decimal(config["tax_percent"]) / 100)
+    return {"band": band, "name": name, "excluding_tax": rate, "including_tax": str(inclusive),
+            "source": source, "currency": config["currency"], "unit": config["currency"] + "/kWh"}

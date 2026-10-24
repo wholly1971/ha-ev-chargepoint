@@ -33,9 +33,13 @@ class BillingRuntime(DataUpdateCoordinator):
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}", private=True)
         self.ledger = Ledger()
         self.lock = asyncio.Lock()
+        self.charge_lock = asyncio.Lock()
         self.unsubscribers = []
         self.stopping = False
         self.sample_rates = None
+        self.charge_mode = "Automatic schedule"
+        self.override_until = None
+        self.charge_mode_entity_id = None
         self.email_test_lock = asyncio.Lock()
         self.email_test = {"status": "not_tested", "attempted_at": None}
         self.last_email_test = None
@@ -49,7 +53,7 @@ class BillingRuntime(DataUpdateCoordinator):
             self.hass.async_create_task(self.async_tick())
 
         self.unsubscribers.append(
-            async_track_state_change_event(self.hass, [self.config["power_sensor"], *[value for key, value in self.config.items() if key.startswith("tariff_") and key.endswith("_sensor") and value]], changed)
+            async_track_state_change_event(self.hass, [self.config["power_sensor"], *([self.config["charger_switch"]] if self.config.get("charger_switch") else []), *[value for key, value in self.config.items() if key.startswith("tariff_") and key.endswith("_sensor") and value]], changed)
         )
         self.unsubscribers.append(
             async_track_time_interval(self.hass, self.async_tick, timedelta(seconds=30))
@@ -103,9 +107,19 @@ class BillingRuntime(DataUpdateCoordinator):
             self.async_set_updated_data(self.ledger.data)
 
     async def _control(self, now):
-        if not self.config["control_switch"]:
-            return
-        desired = "on" if in_window(dt_util.as_local(now), self.config) else "off"
+        async with self.charge_lock:
+            await self._control_locked(now)
+
+    async def _control_locked(self, now):
+        if self.override_until is not None and now >= self.override_until:
+            self.charge_mode = "Automatic schedule"
+            self.override_until = None
+        if self.charge_mode == "Automatic schedule":
+            if not self.config["control_switch"]:
+                return
+            desired = "on" if in_window(dt_util.as_local(now), self.config) else "off"
+        else:
+            desired = "on" if self.charge_mode == "Manual charging on" else "off"
         entity_id = self.config["charger_switch"]
         state = self.hass.states.get(entity_id)
         if state is None or state.state == desired:
@@ -200,3 +214,36 @@ class BillingRuntime(DataUpdateCoordinator):
                 self.email_test["status"] = "submitted"
             finally:
                 self.async_set_updated_data(self.ledger.data)
+
+    def _next_schedule_boundary(self, now):
+        if not self.config["control_switch"] or self.config["schedule_mode"] != "window":
+            return None
+        initial = in_window(dt_util.as_local(now), self.config)
+        boundary = now.replace(second=0, microsecond=0)
+        for _ in range(1500):
+            boundary += timedelta(minutes=1)
+            if in_window(dt_util.as_local(boundary), self.config) != initial:
+                return boundary
+        return None
+
+    async def async_set_charge_mode(self, mode):
+        """Explicit manual override; automatic operation resumes at the next boundary."""
+        if mode not in ("Automatic schedule", "Manual charging on", "Manual charging off"):
+            raise HomeAssistantError("Invalid charging mode")
+        entity_id = self.config.get("charger_switch")
+        state = self.hass.states.get(entity_id) if entity_id else None
+        if state is None or state.state not in ("on", "off"):
+            raise HomeAssistantError("The configured charger switch is unavailable")
+        async with self.charge_lock:
+            now = dt_util.utcnow()
+            if mode == "Automatic schedule":
+                desired = "on" if in_window(dt_util.as_local(now), self.config) else "off"
+                apply = self.config["control_switch"]
+            else:
+                desired = "on" if mode == "Manual charging on" else "off"
+                apply = True
+            if apply:
+                await self.hass.services.async_call("switch", f"turn_{desired}", {"entity_id": entity_id}, blocking=True)
+            self.charge_mode = mode
+            self.override_until = self._next_schedule_boundary(now) if mode != "Automatic schedule" else None
+            self.async_set_updated_data(self.ledger.data)

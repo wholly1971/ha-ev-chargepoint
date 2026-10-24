@@ -245,3 +245,32 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
         self.assertEqual(result["data"]["start_time"], "00:01:00")
         self.assertEqual(result["data"]["smtp_password"], "test-only")
         self.assertEqual(result["data"]["billing_scope"], "all_time")
+
+    def test_charging_mode_select_routes_to_runtime(self):
+        import asyncio
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock
+        from custom_components.ev_chargepoint.select import ChargingMode
+        runtime = SimpleNamespace(charge_mode="Automatic schedule", override_until=None,
+                                  async_set_charge_mode=AsyncMock())
+        selector = ChargingMode(SimpleNamespace(entry_id="test", runtime_data=runtime))
+        asyncio.run(selector.async_select_option("Manual charging on"))
+        runtime.async_set_charge_mode.assert_awaited_once_with("Manual charging on")
+        self.assertEqual(selector.current_option, "Automatic schedule")
+
+    def test_current_charge_rate_uses_active_sensor_and_invoice_tax(self):
+        from types import SimpleNamespace
+        from datetime import datetime, timezone
+        from decimal import Decimal
+        from custom_components.ev_chargepoint.tariffs import current_charge_rate
+        from custom_components.ev_chargepoint.const import DEFAULTS
+        config = {**DEFAULTS, "use_tariff_bands": True, "tax_percent": "10",
+                  "tariff_peak_enabled": True, "tariff_peak_start": "06:00:00",
+                  "tariff_peak_end": "20:00:00", "tariff_peak_rate": "0.40",
+                  "tariff_peak_sensor": "sensor.rate", "tariff_peak_sensor_includes_tax": True}
+        hass = SimpleNamespace(states=SimpleNamespace(get=lambda _: SimpleNamespace(state="0.33", attributes={"unit_of_measurement":"AUD/kWh"})))
+        rate = current_charge_rate(hass, config, datetime(2026,10,25,12,tzinfo=timezone.utc))
+        self.assertEqual(rate["name"], "Peak")
+        self.assertEqual(Decimal(rate["excluding_tax"]), Decimal("0.3"))
+        self.assertEqual(Decimal(rate["including_tax"]), Decimal("0.33"))
+        self.assertEqual(rate["source"], "sensor")
