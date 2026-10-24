@@ -199,3 +199,49 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
         runtime.async_test_email.assert_awaited_once()
         runtime.async_approve.assert_not_awaited()
         runtime.async_retry.assert_not_awaited()
+
+    def test_tariff_overlaps_rejected_and_adjacent_overnight_allowed(self):
+        from types import SimpleNamespace
+        from custom_components.ev_chargepoint.config_flow import validate_tariffs, ConfigValidationError
+        from custom_components.ev_chargepoint.const import DEFAULTS
+        values = {**DEFAULTS, "use_tariff_bands": True, "tariff_peak_enabled": True,
+                  "tariff_peak_start": "20:00:00", "tariff_peak_end": "23:00:00",
+                  "tariff_ev_night_enabled": True, "tariff_ev_night_start": "22:00:00",
+                  "tariff_ev_night_end": "06:00:00"}
+        hass = SimpleNamespace(states=SimpleNamespace(get=lambda _: None))
+        with self.assertRaises(ConfigValidationError) as error:
+            validate_tariffs(hass, values)
+        self.assertEqual(error.exception.code, "overlapping_tariffs")
+        values["tariff_ev_night_start"] = "23:00:00"
+        validate_tariffs(hass, values)
+        values["tariff_peak_end"] = "20:00:00"
+        with self.assertRaises(ConfigValidationError) as error:
+            validate_tariffs(hass, values)
+        self.assertEqual(error.exception.code, "empty_tariff_window")
+
+    def test_options_tariff_step_preserves_schedule_and_email(self):
+        import asyncio
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from custom_components.ev_chargepoint.config_flow import EVBillingOptionsFlow, main_values, tariff_schema
+        from custom_components.ev_chargepoint.const import DEFAULTS
+        values = {**DEFAULTS, "power_sensor": "sensor.ev", "use_tariff_bands": True,
+                  "billing_scope": "all_time", "schedule_mode": "window",
+                  "start_time": "00:01:00", "end_time": "05:59:00", "smtp_provider": "gmail",
+                  "smtp_username": "sender@gmail.com", "smtp_password": "test-only",
+                  "customer_email": "customer@example.com", "auto_email": True}
+        entry = SimpleNamespace(entry_id="existing", options=values, data={})
+        flow = EVBillingOptionsFlow()
+        flow.hass = SimpleNamespace(states=SimpleNamespace(get=lambda _: SimpleNamespace(attributes={"unit_of_measurement": "W"})),
+            config_entries=SimpleNamespace(async_entries=lambda _: [], async_get_entry=lambda _: entry))
+        with patch.object(EVBillingOptionsFlow, "config_entry", new=entry):
+            result = asyncio.run(flow.async_step_init(main_values(values)))
+            self.assertEqual(result["step_id"], "tariffs")
+            inputs = {key.schema: values[key.schema] for key in tariff_schema(values).schema if key.schema in values}
+            result = asyncio.run(flow.async_step_tariffs(inputs))
+            self.assertEqual(result["step_id"], "email_gmail")
+            result = asyncio.run(flow.async_step_email_gmail({}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["start_time"], "00:01:00")
+        self.assertEqual(result["data"]["smtp_password"], "test-only")
+        self.assertEqual(result["data"]["billing_scope"], "all_time")

@@ -26,3 +26,11 @@ DEFAULTS = {
     "smtp_sender": "",
     "customer_email": "",
 }
+
+TARIFF_BANDS = {"peak": "Peak", "off_peak": "Off Peak", "shoulder_1": "Shoulder 1",
+                "shoulder_2": "Shoulder 2", "ev_night": "EV Night"}
+DEFAULTS.update(use_tariff_bands=False, billing_scope="scheduled", sensor_rate_tax_percent="10")
+for band in TARIFF_BANDS:
+    DEFAULTS.update({f"tariff_{band}_enabled": False, f"tariff_{band}_start": "00:00:00",
+                     f"tariff_{band}_end": "00:00:00", f"tariff_{band}_rate": "0",
+                     f"tariff_{band}_sensor_includes_tax": True})

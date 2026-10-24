@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-10-24
+
+- Add configurable Peak, Off Peak, Shoulder 1, Shoulder 2 and EV Night windows, each with a manual rate, optional rate sensor and sensor tax-inclusion setting. Enabled windows must not overlap; overnight windows work.
+- Add explicit all-measured-charging billing scope, independent of charger schedule control, with an option to retain legacy schedule-only billing.
+- Record daily/monthly band kWh, energy costs, outside-schedule charging and sensor-fallback usage. Immutable invoices include the recorded band/rate breakdown; old energy is not reclassified.
+- Add Charge rates dashboard tables and CSV export. Unavailable sensors use the configured manual fallback; unmatched windows use the default rate.
+
 ## 0.3.3 — 2026-10-23
 
 - Fix the README logo inside HACS with an absolute HTTPS asset URL.

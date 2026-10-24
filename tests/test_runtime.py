@@ -253,6 +253,19 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             await self.runtime.async_test_email()
         send.assert_awaited_once_with(self.hass, self.runtime.config)
 
-
-if __name__ == "__main__":
-    unittest.main()
+    async def test_rate_sensor_change_applies_after_event_boundary(self):
+        self.runtime.config.update(use_tariff_bands=True, billing_scope="all_time",
+            tariff_peak_enabled=True, tariff_peak_start="00:00:00", tariff_peak_end="23:59:00",
+            tariff_peak_rate="0.45", tariff_peak_sensor="sensor.rate",
+            tariff_peak_sensor_includes_tax=False)
+        power = SimpleNamespace(state="1000", attributes={"unit_of_measurement": "W"}, last_reported=NOW)
+        rate = SimpleNamespace(state="0.30", attributes={"unit_of_measurement": "AUD/kWh"})
+        self.hass.states = SimpleNamespace(get=lambda entity: power if entity=="sensor.ev" else rate)
+        self.runtime._sample(NOW)
+        rate.state = "0.60"
+        from datetime import timedelta
+        self.runtime._sample(NOW + timedelta(seconds=30))
+        bucket = self.runtime.ledger.data["months"]["2026-02"]
+        self.assertAlmostEqual(float(bucket["tariffs"]["peak"]["energy_cost"]), 0.0025)
+        self.runtime._sample(NOW + timedelta(seconds=60))
+        self.assertAlmostEqual(float(bucket["tariffs"]["peak"]["energy_cost"]), 0.0075)

@@ -136,6 +136,62 @@ class BillingTests(unittest.TestCase):
         self.advance(self.now + timedelta(hours=1))
         self.assertEqual(self.ledger.data, snapshot)
 
+    def test_bands_split_costs_and_bill_outside_schedule(self):
+        self.config.update(use_tariff_bands=True, billing_scope="all_time", rate="0.40",
+                           schedule_mode="window", start_time="00:01:00", end_time="05:59:00",
+                           tariff_ev_night_enabled=True, tariff_ev_night_start="00:00:00",
+                           tariff_ev_night_end="06:00:00", tariff_ev_night_rate="0.08",
+                           tariff_peak_enabled=True, tariff_peak_start="06:00:00",
+                           tariff_peak_end="09:00:00", tariff_peak_rate="0.30")
+        self.advance(self.now.replace(hour=5), Decimal("1000"))
+        self.advance(self.now.replace(hour=7), Decimal("1000"))
+        bucket = self.ledger.data["months"]["2026-01"]
+        self.assertAlmostEqual(float(bucket["kwh"]), 2)
+        self.assertAlmostEqual(float(bucket["tariffs"]["ev_night"]["kwh"]), 1)
+        self.assertAlmostEqual(float(bucket["tariffs"]["peak"]["kwh"]), 1)
+        self.assertAlmostEqual(float(bucket["tariffs"]["peak"]["outside_schedule_kwh"]), 1)
+        self.assertEqual(self.ledger.totals("2026-01")[2], "0.38")
+        invoice = self.ledger.issue("2026-01", "2026-02", "id", self.now, True)
+        self.assertIn("EV Night", billing.invoice_text(invoice))
+        self.assertIn("Peak", billing.invoice_text(invoice))
+        self.assertIn("Outside charging schedule", billing.invoice_text(invoice))
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_uncovered_band_uses_default_and_tracks_fallback(self):
+        self.config.update(use_tariff_bands=True, billing_scope="all_time", rate="0.40",
+                           tariff_peak_enabled=True, tariff_peak_start="16:00:00",
+                           tariff_peak_end="20:00:00", tariff_peak_rate="0.30")
+        self.config["_tariff_rates"] = {"peak": {"rate": "0.30", "source": "fallback"}}
+        self.advance(self.now.replace(hour=15), Decimal("1000"))
+        self.advance(self.now.replace(hour=17), Decimal("1000"))
+        bucket = self.ledger.data["months"]["2026-01"]
+        self.assertEqual(self.ledger.totals("2026-01")[2], "0.70")
+        self.assertAlmostEqual(float(bucket["tariffs"]["peak"]["fallback_kwh"]), 1)
+        self.assertAlmostEqual(float(bucket["tariffs"]["default"]["kwh"]), 1)
+        self.assertNotIn("_tariff_rates", bucket["settings"])
+
+    def test_overnight_tariff_end_is_exclusive(self):
+        config = {**self.config, "use_tariff_bands": True, "tariff_ev_night_enabled": True,
+                  "tariff_ev_night_start": "22:00:00", "tariff_ev_night_end": "06:00:00",
+                  "tariff_ev_night_rate": "0.08"}
+        for hour, expected in [(21, "default"), (22, "ev_night"), (5, "ev_night"), (6, "default")]:
+            self.assertEqual(billing.tariff_at(self.now.replace(hour=hour), config)[0], expected)
+
+    def test_legacy_consumption_is_kept_when_band_reporting_starts(self):
+        self.advance(self.now, Decimal("1000"))
+        self.advance(self.now + timedelta(hours=1), Decimal("1000"))
+        bucket = self.ledger.data["months"]["2026-01"]
+        bucket.pop("tariffs")
+        self.advance(self.now + timedelta(hours=2), Decimal("1000"))
+        invoice = self.ledger.issue("2026-01", "2026-02", "id", self.now, True)
+        self.assertEqual(invoice["total"], "0.60")
+        self.assertIn("Legacy recorded energy", billing.invoice_text(invoice))
+        snapshot = deepcopy(invoice)
+        bucket["tariffs"]["default"]["kwh"] = "999"
+        self.assertEqual(invoice, snapshot)
+
+    def test_legacy_schedule_scope_still_excludes_outside_usage(self):
+        self.config.update(schedule_mode="window", start_time="01:00:00", end_time="02:00:00",
+                           billing_scope="scheduled")
+        self.advance(self.now.replace(hour=3))
+        self.advance(self.now.replace(hour=4))
+        self.assertEqual(self.ledger.data["months"]["2026-01"]["kwh"], "0")
