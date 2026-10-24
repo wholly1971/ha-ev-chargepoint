@@ -9,7 +9,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .billing import decimal
-from .const import DEFAULTS, DOMAIN
+from .const import DEFAULTS, DOMAIN, TARIFF_BANDS
 from .mail import validate_mail
 from .gmail import resolve_gmail, validate_recipient
 
@@ -63,6 +63,9 @@ def schema(values, hass=None):
     for key in ("agl_rate_sensor", "agl_supply_sensor", "agl_feed_in_sensor"):
         marker = vol.Optional(key, default=values[key]) if values.get(key) else vol.Optional(key)
         fields[marker] = selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
+    fields[vol.Required("use_tariff_bands", default=default("use_tariff_bands"))] = selector.BooleanSelector()
+    fields[vol.Required("billing_scope", default=default("billing_scope"))] = selector.SelectSelector(
+        selector.SelectSelectorConfig(options=["scheduled", "all_time"], translation_key="billing_scope"))
     return vol.Schema(fields)
 
 
@@ -115,11 +118,89 @@ def email_schema(values, hass):
 
 
 def main_values(values):
-    return {key: value for key, value in values.items() if key not in EMAIL_KEYS}
+    return {key: value for key, value in values.items() if key not in EMAIL_KEYS and not key.startswith("tariff_") and key != "sensor_rate_tax_percent"}
+
+
+def tariff_schema(values):
+    fields = {}
+    for band in TARIFF_BANDS:
+        prefix = "tariff_" + band + "_"
+        for suffix in ("enabled", "start", "end", "rate", "sensor_includes_tax"):
+            key = prefix + suffix
+            marker = vol.Required(key, default=values.get(key, DEFAULTS[key]))
+            if suffix in ("enabled", "sensor_includes_tax"):
+                fields[marker] = selector.BooleanSelector()
+            elif suffix in ("start", "end"):
+                fields[marker] = selector.TimeSelector()
+            else:
+                fields[marker] = selector.TextSelector()
+        key = prefix + "sensor"
+        marker = vol.Optional(key, default=values[key]) if values.get(key) else vol.Optional(key)
+        fields[marker] = selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
+    fields[vol.Required("sensor_rate_tax_percent", default=values.get("sensor_rate_tax_percent", "10"))] = selector.TextSelector()
+    return vol.Schema(fields)
+
+
+def validate_tariffs(hass, data):
+    if not data.get("use_tariff_bands"):
+        return
+    try:
+        if not 0 <= decimal(data.get("sensor_rate_tax_percent", "10")) <= 100:
+            raise ValueError("Invalid tax")
+    except (ValueError, InvalidOperation) as exc:
+        raise ConfigValidationError("sensor_rate_tax_percent", "invalid_tax") from exc
+    occupied = set()
+    for band in TARIFF_BANDS:
+        prefix = "tariff_" + band + "_"
+        if not data.get(prefix + "enabled"):
+            continue
+        minutes = []
+        for suffix in ("start", "end"):
+            key = prefix + suffix
+            try:
+                parsed = time.fromisoformat(data[key])
+                if parsed.tzinfo is not None:
+                    raise ValueError("Local time required")
+                data[key] = parsed.replace(second=0, microsecond=0).isoformat()
+                minutes.append(parsed.hour * 60 + parsed.minute)
+            except (ValueError, TypeError, KeyError) as exc:
+                raise ConfigValidationError(key, "invalid_time") from exc
+        start, end = minutes
+        if start == end:
+            raise ConfigValidationError(prefix + "end", "empty_tariff_window")
+        covered = set(range(start, end)) if start < end else set(range(start, 1440)) | set(range(end))
+        if occupied & covered:
+            raise ConfigValidationError(prefix + "start", "overlapping_tariffs")
+        occupied |= covered
+        try:
+            if decimal(data[prefix + "rate"]) < 0:
+                raise ValueError("Negative rate")
+        except (ValueError, InvalidOperation, KeyError) as exc:
+            raise ConfigValidationError(prefix + "rate", "invalid_amount") from exc
+        entity_id = data.get(prefix + "sensor")
+        if entity_id:
+            state = hass.states.get(entity_id)
+            if state is None or state.attributes.get("unit_of_measurement") != data["currency"] + "/kWh":
+                raise ConfigValidationError(prefix + "sensor", "invalid_rate_sensor")
 
 
 class EmailFlowMixin:
     """Stage provider selection before requesting provider-specific credentials."""
+
+    async def async_step_tariffs(self, user_input=None):
+        errors = {}
+        if user_input is not None:
+            self._values.update(user_input)
+            try:
+                validate_tariffs(self.hass, self._values)
+            except ConfigValidationError as exc:
+                errors[exc.field] = exc.code
+            else:
+                if self._values["smtp_provider"] != "none":
+                    return await self.async_step_email()
+                self._values["auto_email"] = False
+                return self.async_create_entry(title=self._values["name"] if self._entry_id is None else "", data=self._values)
+        return self.async_show_form(step_id="tariffs", data_schema=tariff_schema(self._values), errors=errors)
 
     async def async_step_email(self, user_input=None):
         errors = {}
@@ -162,6 +243,7 @@ class ConfigValidationError(ValueError):
 
 def validate(hass, data, entry_id=None):
     """Validate selections and prevent accidental double billing/control."""
+    validate_tariffs(hass, data)
     for key in ("rate", "fixed_fee", "tax_percent"):
         try:
             if decimal(data[key]) < 0:
@@ -244,6 +326,8 @@ class EVBillingConfigFlow(EmailFlowMixin, config_entries.ConfigFlow, domain=DOMA
             else:
                 self._entry_id = None
                 self._values = {**staged, "auto_email": user_input["auto_email"]}
+                if self._values.get("use_tariff_bands"):
+                    return await self.async_step_tariffs()
                 if self._values["smtp_provider"] != "none":
                     return await self.async_step_email()
                 self._values["auto_email"] = False
@@ -272,6 +356,8 @@ class EVBillingOptionsFlow(EmailFlowMixin, config_entries.OptionsFlow):
             else:
                 self._entry_id = self.config_entry.entry_id
                 self._values = {**staged, "auto_email": user_input["auto_email"]}
+                if self._values.get("use_tariff_bands"):
+                    return await self.async_step_tariffs()
                 if self._values["smtp_provider"] != "none":
                     return await self.async_step_email()
                 self._values["auto_email"] = False

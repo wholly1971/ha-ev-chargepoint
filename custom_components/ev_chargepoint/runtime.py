@@ -17,6 +17,7 @@ from homeassistant.util import dt as dt_util
 
 from .billing import Ledger, decimal, in_window, invoice_html
 from .const import DEFAULTS, DOMAIN
+from .tariffs import resolve_rates
 from .branding import logo_data_uri
 from .mail import send_invoice, send_test_email
 from .gmail import async_send_invoice as async_send_gmail_invoice, async_send_test_email as async_send_gmail_test
@@ -34,6 +35,7 @@ class BillingRuntime(DataUpdateCoordinator):
         self.lock = asyncio.Lock()
         self.unsubscribers = []
         self.stopping = False
+        self.sample_rates = None
         self.email_test_lock = asyncio.Lock()
         self.email_test = {"status": "not_tested", "attempted_at": None}
         self.last_email_test = None
@@ -47,7 +49,7 @@ class BillingRuntime(DataUpdateCoordinator):
             self.hass.async_create_task(self.async_tick())
 
         self.unsubscribers.append(
-            async_track_state_change_event(self.hass, [self.config["power_sensor"]], changed)
+            async_track_state_change_event(self.hass, [self.config["power_sensor"], *[value for key, value in self.config.items() if key.startswith("tariff_") and key.endswith("_sensor") and value]], changed)
         )
         self.unsubscribers.append(
             async_track_time_interval(self.hass, self.async_tick, timedelta(seconds=30))
@@ -83,9 +85,10 @@ class BillingRuntime(DataUpdateCoordinator):
             and (now - datetime.fromisoformat(cursor)).total_seconds() > self.config["max_age"]
         ):
             fresh = False
-        self.ledger.advance(
-            now, watts, self.config, dt_util.DEFAULT_TIME_ZONE, valid_previous=fresh
-        )
+        rates = resolve_rates(self.hass, self.config)
+        effective = {**self.config, "_tariff_rates": self.sample_rates or rates}
+        self.ledger.advance(now, watts, effective, dt_util.DEFAULT_TIME_ZONE, valid_previous=fresh)
+        self.sample_rates = rates
 
     async def async_tick(self, _now=None):
         async with self.lock:

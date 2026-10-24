@@ -10,6 +10,7 @@ def ledger_summary(ledger):
             period: {
                 "gap_seconds": bucket["gap_seconds"],
                 "partial": bucket["partial"],
+                "tariffs": bucket.get("tariffs", {}),
                 "kwh": bucket["kwh"],
                 "subtotal": ledger.totals(period)[0],
                 "tax": ledger.totals(period)[1],
@@ -23,7 +24,7 @@ def ledger_summary(ledger):
             period: {
                 key: invoice[key]
                 for key in ("number", "period", "issued_at", "kwh", "total", "partial")
-            } | {"currency": invoice["settings"]["currency"]}
+            } | {"currency": invoice["settings"]["currency"], "tariffs": invoice.get("tariffs", {})}
             for period, invoice in data["invoices"].items()
         },
     }

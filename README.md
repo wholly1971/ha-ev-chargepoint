@@ -7,12 +7,12 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.3.3.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.4.0.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
 readable installed/latest versions. When switching an existing branch install,
-open EV ChargePoint in HACS, choose **Redownload â†’ 0.3.3**, then restart Home
+open EV ChargePoint in HACS, choose **Redownload â†’ 0.4.0**, then restart Home
 Assistant after the download completes. Do not repeatedly reinstall while the
 restart-required banner is shown.
 
@@ -106,12 +106,12 @@ left-hand sum), samples at state changes and every 30 seconds, and stores its
 ledger after each sample. This is an estimate based on the sensor's reporting
 frequency, not a replacement for a dedicated certified energy meter.
 
-Only electricity inside the configured window is billed. Switch control is a
+Billing scope can cover the configured window or all measured charging. Switch control is a
 separate option: when enabled, the integration enforces on inside the window and
 off outside it, including on startup. All-day mode forces the switch on.
 Switch changes take up to 30 seconds. Use the charger's supported control entity.
 Equal start/end times mean all day. Schedule precision is one minute, every day;
-multiple windows, weekday schedules, and peak/off-peak tariff bands are not yet supported.
+weekday-specific switching schedules are not yet supported; the separate tariff bands provide daily pricing windows.
 
 The selected sensor's last report must be recent, its units W/kW, and its value
 finite and nonnegative. Outages, stale readings, and Home Assistant downtime
@@ -273,3 +273,13 @@ The optional pricing module reads three existing Home Assistant sensors: **AGL /
 Haggle remains responsible for AGL authentication and polling. No AGL credentials are copied into EV ChargePoint. The reference prices do not change the EV tariff, copy the household supply charge into EV invoices, or apply feed-in credits. Haggle plan rates include GST; EV tariffs are configured excluding tax. A time-of-use rate must be verified for the charging window before using it for billing. Haggle's meter data commonly lags 24-48 hours; this is not a live spot-price feed. See [Haggle](https://github.com/NaanyaBiz/haggle).
 
 The HACS repository description uses an absolute HTTPS image URL so its logo also renders inside Home Assistant. The repository-list thumbnail is controlled by HACS 2.0.5, which does not use bundled local brand icons; that separate placeholder cannot be changed through EV ChargePoint settings.
+
+### Multiple time-based charge rates
+
+In Configure, enable **Configure time-based tariff bands**. The next screen provides **Peak**, **Off Peak**, **Shoulder 1**, **Shoulder 2** and **EV Night**. For each band enter From, To, a manual/fallback rate and optionally a Home Assistant rate sensor. Enable only bands you use; there are no guessed utility-plan times or rates. Windows repeat daily, use Home Assistant local time, include From and exclude To, and can cross midnight. Enabled windows cannot overlap or have equal start/end times. Uncovered times use the existing default rate.
+
+A selected sensor must use the billing currency per kWh (for example AUD/kWh). A valid nonnegative sensor value replaces that band's manual rate prospectively. Unknown, unavailable, nonfinite, wrong-unit or negative readings use the manual fallback and are reported as fallback usage. Sensor state changes split pricing at the event boundary. Enable **Sensor price includes tax** for GST-inclusive Haggle prices and enter the included sensor tax percentage (usually 10); that tax is removed before the invoice's configured tax is applied. Manual rates are tax-exclusive. No rate or time is inferred from a sensor name or the AGL reference module.
+
+**When to record billable charging** controls billing scope independently of charger switch control. Choose **All measured charging, including outside the schedule** to price manual/out-of-schedule charging. The legacy **Only inside the charging schedule** option retains earlier behavior. Existing installs keep that legacy scope until changed. The charging window still controls the switch when automatic control is enabled; disable automatic switch control to operate the outlet manually. Tariff settings never override the switch schedule by themselves.
+
+The **Charge rates** dashboard tab shows configured bands, sources, effective tax-exclusive rates and recorded monthly kWh/cost by band, including outside-schedule and fallback kWh. Daily activity shows daily band costs; CSV export and new invoices preserve the breakdown. Energy cost excludes monthly fixed fees and invoice tax. Existing consumption and issued invoices are not retroactively reclassified. Old aggregate-by-rate consumption remains a separate legacy line when a new invoice also contains band records.
