@@ -9,7 +9,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .billing import decimal
-from .const import DEFAULTS, DOMAIN, TARIFF_BANDS
+from .const import DEFAULTS, DOMAIN, TARIFF_BANDS, INVOICE_BILLING_OPTIONS
 from .mail import validate_mail
 from .gmail import resolve_gmail, validate_recipient
 
@@ -118,7 +118,7 @@ def email_schema(values, hass):
 
 
 def main_values(values):
-    return {key: value for key, value in values.items() if key not in EMAIL_KEYS and not key.startswith("tariff_") and key != "sensor_rate_tax_percent"}
+    return {key: value for key, value in values.items() if key not in (*EMAIL_KEYS, "invoice_billing_option") and not key.startswith("tariff_") and key != "sensor_rate_tax_percent"}
 
 
 def tariff_schema(values):
@@ -199,7 +199,7 @@ class EmailFlowMixin:
                 if self._values["smtp_provider"] != "none":
                     return await self.async_step_email()
                 self._values["auto_email"] = False
-                return self.async_create_entry(title=self._values["name"] if self._entry_id is None else "", data=self._values)
+                return await self.async_step_invoice_billing()
         return self.async_show_form(step_id="tariffs", data_schema=tariff_schema(self._values), errors=errors)
 
     async def async_step_email(self, user_input=None):
@@ -211,16 +211,30 @@ class EmailFlowMixin:
             except ConfigValidationError as exc:
                 errors["base" if exc.field == "auto_email" else exc.field] = exc.code
             else:
-                return self.async_create_entry(
-                    title=self._values["name"] if self._entry_id is None else "",
-                    data=self._values,
-                )
+                return await self.async_step_invoice_billing()
         provider = self._values["smtp_provider"]
         return self.async_show_form(
             step_id="email_" + provider,
             data_schema=email_schema(self._values, self.hass),
             errors=errors,
         )
+
+    async def async_step_invoice_billing(self, user_input=None):
+        """One presentation setting shared by local invoices and every provider."""
+        errors = {}
+        if user_input is not None:
+            choice = user_input.get("invoice_billing_option")
+            if choice not in INVOICE_BILLING_OPTIONS:
+                errors["invoice_billing_option"] = "invalid_invoice_option"
+            else:
+                self._values["invoice_billing_option"] = choice
+                return self.async_create_entry(
+                    title=self._values["name"] if self._entry_id is None else "", data=self._values)
+        return self.async_show_form(step_id="invoice_billing", data_schema=vol.Schema({
+            vol.Required("invoice_billing_option", default=self._values.get("invoice_billing_option", "itemised")):
+                selector.SelectSelector(selector.SelectSelectorConfig(
+                    options=list(INVOICE_BILLING_OPTIONS), translation_key="invoice_billing_option"))
+        }), errors=errors)
 
     async def async_step_email_gmail(self, user_input=None):
         return await self.async_step_email(user_input)
@@ -244,6 +258,8 @@ class ConfigValidationError(ValueError):
 def validate(hass, data, entry_id=None):
     """Validate selections and prevent accidental double billing/control."""
     validate_tariffs(hass, data)
+    if data.get("invoice_billing_option", "itemised") not in INVOICE_BILLING_OPTIONS:
+        raise ConfigValidationError("invoice_billing_option", "invalid_invoice_option")
     for key in ("rate", "fixed_fee", "tax_percent"):
         try:
             if decimal(data[key]) < 0:
@@ -331,7 +347,7 @@ class EVBillingConfigFlow(EmailFlowMixin, config_entries.ConfigFlow, domain=DOMA
                 if self._values["smtp_provider"] != "none":
                     return await self.async_step_email()
                 self._values["auto_email"] = False
-                return self.async_create_entry(title=user_input["name"], data=self._values)
+                return await self.async_step_invoice_billing()
         return self.async_show_form(
             step_id="user", data_schema=schema(user_input or {}, self.hass), errors=errors
         )
@@ -361,7 +377,7 @@ class EVBillingOptionsFlow(EmailFlowMixin, config_entries.OptionsFlow):
                 if self._values["smtp_provider"] != "none":
                     return await self.async_step_email()
                 self._values["auto_email"] = False
-                return self.async_create_entry(title="", data=self._values)
+                return await self.async_step_invoice_billing()
         return self.async_show_form(
             step_id="init",
             errors=errors,

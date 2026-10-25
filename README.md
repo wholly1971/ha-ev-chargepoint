@@ -15,7 +15,7 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.4.2.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.4.3.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
@@ -317,3 +317,16 @@ Issued invoices are rendered as A4 PDFs with the EV ChargePoint logo, navy invoi
 Every invoice email now attaches the PDF for Gmail app passwords, custom SMTP and connected Google Mail. Connected Google Mail PDF delivery uses the Home Assistant 2026.10 account runtime client because the native notification action supports HTML only; a missing client causes an explicit failure requiring review/retry. The existing recipient snapshot and uncertain-send safeguards remain in effect. Test email remains a simple marked connectivity test and does not issue or attach a customer invoice.
 
 PDF and HTML files stay in the private invoice folder, outside `www`. Existing issued accounting snapshots and existing HTML files are preserved; missing PDFs are generated from their saved snapshots. An update does not resend submitted invoices or approve incomplete periods. ReportLab 4.4.9 is installed automatically as an integration dependency. Future monthly invoice emails use the new PDF automatically when automatic delivery is enabled.
+
+### Invoice Billing Options (0.4.3)
+
+Open **Settings > Devices & services > EV ChargePoint > Configure**. Submit the billing form, the time-based tariff form if enabled, and your selected email provider's settings. The final page is **Invoice Billing Options**. Choose:
+
+- **Itemised individual tariff charging (default)**: each calendar day's recorded tariff/rate rows; rate changes stay separate. These are measured energy lines, not inferred vehicle sessions.
+- **Combined tariffs - total daily charge**: one combined energy row per recorded day.
+- **Monthly tariff totals**: one energy row per tariff across the month, combining recorded rates without claiming they were a single unit rate.
+- **Monthly total**: one combined energy row for the month.
+
+Every choice uses the same monthly billing period and the same recorded energy costs, monthly fee, tax and grand total. Combined rows show a dash for the unit rate. The option changes presentation only; it does not change tariff schedules, charging controls or when email is sent. Fees and tax are shown separately. Daily layouts preserve older usage without daily evidence as a labelled summary instead of guessing dates.
+
+The branded A4 invoice is the default PDF for every choice. Seller/customer details and payment terms come from Configure. When automatic monthly email is enabled, Gmail/SMTP sends the selected invoice layout as a PDF attachment. The matching text/HTML body uses the same grouping. No extra PDF toggle is needed and saving options sends no email. Local-only users can choose the layout too. The selected layout and available daily evidence are copied into newly issued invoice snapshots; existing issued invoices and their delivery state are unchanged.

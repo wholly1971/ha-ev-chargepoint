@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 labels = {
+    "invoice_billing_option": "Invoice Billing Options",
     "name": "Installation name",
     "use_tariff_bands": "Configure time-based tariff bands",
     "billing_scope": "When to record billable charging",
@@ -44,6 +45,7 @@ for band, name in {"peak": "Peak", "off_peak": "Off Peak", "shoulder_1": "Should
                           "sensor_includes_tax": "Sensor price includes tax"}.items():
         labels["tariff_" + band + "_" + suffix] = name + " — " + label
 error = {
+    "invalid_invoice_option": "Choose one of the four invoice billing layouts.",
     "empty_tariff_window": "Choose different from/to times. Overnight windows are supported.",
     "overlapping_tariffs": "Enabled tariff windows overlap. Use adjacent end/start times; each minute must match at most one band.",
     "invalid_rate_sensor": "Choose a rate sensor with units matching the billing currency, such as AUD/kWh. Unavailable readings use the manual fallback rate.",
@@ -69,6 +71,8 @@ step = {
     "description": "Configure one customer and dedicated EV power sensor. Choose No email / no SMTP server for local invoices only; leave all server and recipient fields blank. This also disables automatic email and manual retries. For Gmail without SMTP, first connect Google Mail in Home Assistant, select Gmail - connected account, choose your sending account and enter the invoice recipient. The default uses the only connected Gmail account; select explicitly if there are several. SMTP fields are ignored in connected-account mode. Other providers use the settings below. Gmail selects smtp.gmail.com:587 with STARTTLS automatically: enter your Gmail address as username and use a Google app password, not your normal password. Leave sender blank to use the Gmail username. Custom server fields are ignored for Gmail. Switch control and automatic email are optional. Schedule times are saved to the minute; seconds are ignored.",
 }
 email_steps = {
+    "invoice_billing": {"title": "Invoice Billing Options", "data": {"invoice_billing_option": labels["invoice_billing_option"]},
+        "description": "Choose how the monthly invoice groups recorded charging: individual daily tariff/rate lines, combined daily charges, monthly tariff totals or one monthly total. Fees and tax remain separate; totals and recorded rates do not change. Older usage without daily detail remains a labelled summary. The branded invoice layout is automatically populated from seller/customer and payment settings and attached as a PDF whenever invoice email is enabled. This does not change the monthly sending schedule or send a test email."},
     "tariffs": {"title": "Time-based charge rates", "data": labels,
         "description": "Define Peak, Off Peak, Shoulder 1, Shoulder 2 and EV Night. Enable only bands you use. From is inclusive; To is exclusive; overnight windows are supported. Overlaps are rejected. Uncovered times use the default rate. A selected sensor overrides the manual rate when valid; unavailable/invalid sensors use the manual fallback and are reported. Manual rates exclude tax. Mark tax-inclusive sensor prices (such as Haggle) to remove the included tax before invoice tax is applied. Charging switch control remains separate."},
     "email_gmail": {"title": "Gmail with Google app password", "data": labels,
@@ -84,6 +88,12 @@ translation = {
     "config": {"step": {"user": step, **email_steps}, "error": error},
     "options": {"step": {"init": step, **email_steps}, "error": error},
     "selector": {
+        "invoice_billing_option": {"options": {
+            "itemised": "Itemised individual tariff charging (default)",
+            "daily": "Combined tariffs - total daily charge",
+            "monthly_tariffs": "Monthly tariff totals",
+            "monthly_total": "Monthly total",
+        }},
         "billing_scope": {"options": {"scheduled": "Only inside the charging schedule (legacy)", "all_time": "All measured charging, including outside the schedule"}},
         "smtp_provider": {
             "options": {
