@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.3 - 2026-10-25
+
+- Add a final Invoice Billing Options page for itemised daily tariff/rate charging, combined daily charges, monthly tariff totals or a single monthly energy total.
+- Use the chosen presentation in automatically populated branded PDF attachments and matching email bodies, without changing billing totals or sending cadence.
+- Snapshot daily evidence and layout when issuing invoices; retain clearly labelled older usage without daily detail and preserve existing issued invoices.
+- Keep fees/tax separate and avoid inventing a unit rate for combined charges.
+
 ## 0.4.2 - 2026-10-25
 
 - Add branded, paginated A4 PDF invoices with seller/customer details, tariff rows, tax totals, billing notes and payment instructions.

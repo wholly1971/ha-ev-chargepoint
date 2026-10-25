@@ -162,6 +162,8 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
                 "smtp_username": "sender@gmail.com", "smtp_password": "abcd efgh ijkl mnop",
                 "smtp_sender": "", "customer_email": "recipient@example.com",
             }))
+            self.assertEqual(result["step_id"], "invoice_billing")
+            result = asyncio.run(flow.async_step_invoice_billing({"invoice_billing_option": "daily"}))
         self.assertEqual(result["type"], "create_entry")
         self.assertTrue(result["data"]["auto_email"])
         self.assertEqual(result["data"]["smtp_provider"], "gmail")
@@ -241,6 +243,8 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
             result = asyncio.run(flow.async_step_tariffs(inputs))
             self.assertEqual(result["step_id"], "email_gmail")
             result = asyncio.run(flow.async_step_email_gmail({}))
+            self.assertEqual(result["step_id"], "invoice_billing")
+            result = asyncio.run(flow.async_step_invoice_billing({"invoice_billing_option": "monthly_tariffs"}))
         self.assertEqual(result["type"], "create_entry")
         self.assertEqual(result["data"]["start_time"], "00:01:00")
         self.assertEqual(result["data"]["smtp_password"], "test-only")
@@ -274,3 +278,32 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
         self.assertEqual(Decimal(rate["excluding_tax"]), Decimal("0.3"))
         self.assertEqual(Decimal(rate["including_tax"]), Decimal("0.33"))
         self.assertEqual(rate["source"], "sensor")
+
+    def test_invoice_billing_options_reject_invalid_choice(self):
+        import asyncio
+        from custom_components.ev_chargepoint.config_flow import EVBillingOptionsFlow
+        from custom_components.ev_chargepoint.const import DEFAULTS
+        flow = EVBillingOptionsFlow()
+        flow._entry_id = "existing"
+        flow._values = dict(DEFAULTS)
+        result = asyncio.run(flow.async_step_invoice_billing({"invoice_billing_option": "invalid"}))
+        self.assertEqual(result["errors"], {"invoice_billing_option": "invalid_invoice_option"})
+
+    def test_no_email_flow_still_configures_invoice_presentation(self):
+        import asyncio
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from custom_components.ev_chargepoint.config_flow import EVBillingOptionsFlow, main_values
+        from custom_components.ev_chargepoint.const import DEFAULTS
+        values = {**DEFAULTS, "power_sensor": "sensor.ev", "smtp_provider": "none"}
+        entry = SimpleNamespace(entry_id="existing", options=values, data={})
+        flow = EVBillingOptionsFlow()
+        flow.hass = SimpleNamespace(states=SimpleNamespace(get=lambda _: SimpleNamespace(attributes={"unit_of_measurement": "W"})),
+            config_entries=SimpleNamespace(async_entries=lambda _: [], async_get_entry=lambda _: entry))
+        with patch.object(EVBillingOptionsFlow, "config_entry", new=entry):
+            result = asyncio.run(flow.async_step_init(main_values(values)))
+            self.assertEqual(result["step_id"], "invoice_billing")
+            result = asyncio.run(flow.async_step_invoice_billing({"invoice_billing_option": "monthly_total"}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertFalse(result["data"]["auto_email"])
+        self.assertEqual(result["data"]["invoice_billing_option"], "monthly_total")

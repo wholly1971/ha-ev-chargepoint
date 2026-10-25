@@ -25,7 +25,10 @@ DEFAULTS = {
     "smtp_password": "",
     "smtp_sender": "",
     "customer_email": "",
+    "invoice_billing_option": "itemised",
 }
+
+INVOICE_BILLING_OPTIONS = ("itemised", "daily", "monthly_tariffs", "monthly_total")
 
 TARIFF_BANDS = {"peak": "Peak", "off_peak": "Off Peak", "shoulder_1": "Shoulder 1",
                 "shoulder_2": "Shoulder 2", "ev_night": "EV Night"}

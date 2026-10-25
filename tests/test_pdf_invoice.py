@@ -32,10 +32,63 @@ def sample_invoice():
 
 
 class InvoicePdfTests(unittest.TestCase):
+    def detailed_invoice(self):
+        invoice = sample_invoice()
+        invoice['days'] = {}
+        for day in ('2026-09-01', '2026-09-02'):
+            invoice['days'][day] = {'kwh': '80', 'energy_cost': '10.80', 'tariffs': {
+                'ev_night': {'name': 'EV Night', 'lines': {'0.08': '60'}},
+                'peak': {'name': 'Peak', 'lines': {'0.30': '20'}},
+            }}
+        return invoice
+
+    def test_four_modes_keep_energy_amounts_and_snapshots(self):
+        for mode, expected_count in [('itemised', 4), ('daily', 2), ('monthly_tariffs', 2), ('monthly_total', 1)]:
+            with self.subTest(mode=mode):
+                invoice = self.detailed_invoice()
+                invoice['settings']['invoice_billing_option'] = mode
+                before = deepcopy(invoice)
+                rows = pdf.invoice_items(invoice)
+                self.assertEqual(len(rows), expected_count)
+                self.assertEqual(sum(row['quantity'] for row in rows), Decimal('160'))
+                self.assertEqual(sum(row['amount'] for row in rows), Decimal('21.60'))
+                self.assertEqual(invoice, before)
+                self.assertTrue(pdf.invoice_pdf(invoice).startswith(b'%PDF-'))
+
+    def test_combined_rates_are_not_presented_as_a_single_tariff(self):
+        invoice = self.detailed_invoice()
+        invoice['settings']['invoice_billing_option'] = 'monthly_tariffs'
+        invoice['lines'] = {'0.08': '120', '0.30': '20', '0.40': '20'}
+        invoice['tariffs']['peak']['lines'] = {'0.30': '20', '0.40': '20'}
+        peak = next(row for row in pdf.invoice_items(invoice) if row['description'] == 'Peak')
+        self.assertEqual(peak['quantity'], Decimal('40'))
+        self.assertEqual(peak['amount'], Decimal('14.00'))
+        self.assertIsNone(peak['rate'])
+
+    def test_missing_daily_history_stays_a_labelled_remainder(self):
+        invoice = self.detailed_invoice()
+        del invoice['days']['2026-09-02']
+        invoice['settings']['invoice_billing_option'] = 'daily'
+        rows = pdf.invoice_items(invoice)
+        self.assertEqual(rows[0]['description'], '2026-09-01 - Combined tariffs')
+        self.assertEqual(rows[1]['description'], 'Recorded charging without daily detail')
+        self.assertEqual(rows[1]['amount'], Decimal('10.80'))
+        self.assertNotIn('2026-09-02', str(rows))
+
+    def test_daily_layout_ignores_other_months(self):
+        invoice = self.detailed_invoice()
+        invoice['days']['2026-08-31'] = {'kwh': '999', 'energy_cost': '999'}
+        invoice['settings']['invoice_billing_option'] = 'daily'
+        self.assertEqual(len(pdf.invoice_items(invoice)), 2)
+
+    def test_new_default_is_itemised_and_old_snapshot_is_supported(self):
+        self.assertEqual(len(pdf.invoice_items(self.detailed_invoice())), 4)
+        self.assertEqual(len(pdf.invoice_items(sample_invoice())), 2)
+
     def test_rate_rows_preserve_legacy_remainder(self):
         invoice = sample_invoice()
         invoice['lines']['0.30'] = '42'
-        self.assertEqual(pdf.invoice_rows(invoice), [('EV Night', Decimal('120'), Decimal('0.08')), ('Peak', Decimal('40'), Decimal('0.30')), ('Legacy recorded charging', Decimal('2'), Decimal('0.30'))])
+        self.assertEqual(pdf.invoice_rows(invoice), [('EV Night', Decimal('120'), Decimal('0.08'), Decimal('9.60')), ('Peak', Decimal('40'), Decimal('0.30'), Decimal('12.00')), ('Legacy recorded charging', Decimal('2'), Decimal('0.30'), Decimal('0.60'))])
 
     def test_render_does_not_mutate_issued_snapshot(self):
         invoice = sample_invoice()

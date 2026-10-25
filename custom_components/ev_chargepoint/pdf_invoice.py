@@ -1,12 +1,11 @@
 """Printable invoice presentation, derived only from the issued snapshot."""
 
-from decimal import Decimal
 from html import escape
 from io import BytesIO
 from pathlib import Path
 import re
 
-from .billing import decimal, money
+from .billing import decimal, money, invoice_items, INVOICE_LAYOUT_LABELS
 from .branding import logo_bytes
 
 
@@ -17,20 +16,9 @@ def invoice_filename(invoice):
 
 
 def invoice_rows(invoice):
-    """Keep rate changes and unclassified legacy usage without double counting."""
-    rows = []
-    tagged = {}
-    for item in invoice.get("tariffs", {}).values():
-        for rate, kwh in item["lines"].items():
-            quantity = decimal(kwh)
-            if quantity:
-                rows.append((item["name"], quantity, decimal(rate)))
-            tagged[rate] = tagged.get(rate, Decimal(0)) + quantity
-    for rate, kwh in invoice["lines"].items():
-        quantity = decimal(kwh) - tagged.get(rate, Decimal(0))
-        if quantity:
-            rows.append(("Legacy recorded charging" if tagged else "EV charging", quantity, decimal(rate)))
-    return rows
+    """Return presentation rows shared with the email body."""
+    return [(row["description"], row["quantity"], row["rate"], row["amount"])
+            for row in invoice_items(invoice)]
 
 
 def invoice_pdf(invoice, *, sample=False):
@@ -92,18 +80,18 @@ def _render_pdf(invoice, *, sample=False):
         [p("FROM", label), p("BILL TO", label), p("INVOICE DETAILS", label)],
         [p(config.get("seller") or "Seller details not configured"),
          p(config.get("customer") or "Customer details not configured"),
-         p(f"Invoice: {invoice['number']}\nIssued: {invoice['issued_at'][:10]}\nBilling period: {invoice['period']}\nCurrency: {currency}", small)],
+         p(f"Invoice: {invoice['number']}\nIssued: {invoice['issued_at'][:10]}\nBilling period: {invoice['period']}\nCurrency: {currency}\nLayout: {INVOICE_LAYOUT_LABELS.get(config.get('invoice_billing_option', 'itemised'), 'Itemised tariff charging')}", small)],
     ], colWidths=[width * .33, width * .33, width * .34])
     meta.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 12), ("BOTTOMPADDING", (0, 0), (-1, -1), 7)]))
     story += [meta, Spacer(1, 24)]
     data = [[p("QTY / kWh", label), p("DESCRIPTION", label), p(f"UNIT RATE / {currency}", label), p(f"AMOUNT / {currency}", label)]]
-    for name, quantity, rate in invoice_rows(invoice):
-        rate_text = f"{rate.normalize():f}"
-        if "." not in rate_text:
+    for name, quantity, rate, amount in invoice_rows(invoice):
+        rate_text = f"{rate.normalize():f}" if rate is not None else "-"
+        if rate is not None and "." not in rate_text:
             rate_text += ".00"
-        elif len(rate_text.rsplit(".", 1)[1]) < 2:
+        elif rate is not None and len(rate_text.rsplit(".", 1)[1]) < 2:
             rate_text += "0"
-        data.append([p(f"{quantity:.6f}", right), p(name), p(rate_text, right), p(money(quantity * rate), right)])
+        data.append([p(f"{quantity:.6f}", right), p(name), p(rate_text, right), p(money(amount), right)])
     if decimal(config.get("fixed_fee", "0")):
         data.append([p("1", right), p("Monthly fixed fee"), p(money(config["fixed_fee"]), right), p(money(config["fixed_fee"]), right)])
     if len(data) == 1:
@@ -116,7 +104,7 @@ def _render_pdf(invoice, *, sample=False):
                     [p(f"TOTAL {currency}", label), p(f"{currency} {invoice['total']}", ParagraphStyle("EVTotal", parent=right, fontName="EVSansBold", fontSize=15, leading=20))]],
                    colWidths=[170, 125], hAlign="RIGHT")
     totals.setStyle(TableStyle([("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7), ("LINEABOVE", (0, 2), (-1, 2), 1, coral), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-    story += [totals, Spacer(1, 16), p("Rates exclude tax. Invoice totals use unrounded recorded energy; displayed line amounts are rounded to two decimal places.", small)]
+    story += [totals, Spacer(1, 16), p("Rates exclude tax. A dash in Unit rate means combined recorded rates. Totals use unrounded recorded energy; displayed line amounts are rounded to two decimal places.", small)]
     notes = []
     if invoice.get("partial") or invoice.get("gap_seconds"):
         notes.append(f"Approved incomplete period. Missing data: {invoice.get('gap_seconds', 0)} seconds. Only recorded usage is billed.")

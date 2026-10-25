@@ -5,6 +5,7 @@
       "user": {
         "title": "EV charging and billing",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -69,9 +70,17 @@
         },
         "description": "Configure billing and charging, then choose one email method. The next step shows only settings for that method. No email saves local invoices only. Gmail (Google app password) needs no connected Google Mail account. Schedule times are saved to the minute."
       },
+      "invoice_billing": {
+        "title": "Invoice Billing Options",
+        "data": {
+          "invoice_billing_option": "Invoice Billing Options"
+        },
+        "description": "Choose how the monthly invoice groups recorded charging: individual daily tariff/rate lines, combined daily charges, monthly tariff totals or one monthly total. Fees and tax remain separate; totals and recorded rates do not change. Older usage without daily detail remains a labelled summary. The branded invoice layout is automatically populated from seller/customer and payment settings and attached as a PDF whenever invoice email is enabled. This does not change the monthly sending schedule or send a test email."
+      },
       "tariffs": {
         "title": "Time-based charge rates",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -139,6 +148,7 @@
       "email_gmail": {
         "title": "Gmail with Google app password",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -206,6 +216,7 @@
       "email_gmail_oauth": {
         "title": "Connected Google Mail account",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -273,6 +284,7 @@
       "email_custom": {
         "title": "Custom SMTP email",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -339,6 +351,7 @@
       }
     },
     "error": {
+      "invalid_invoice_option": "Choose one of the four invoice billing layouts.",
       "empty_tariff_window": "Choose different from/to times. Overnight windows are supported.",
       "overlapping_tariffs": "Enabled tariff windows overlap. Use adjacent end/start times; each minute must match at most one band.",
       "invalid_rate_sensor": "Choose a rate sensor with units matching the billing currency, such as AUD/kWh. Unavailable readings use the manual fallback rate.",
@@ -364,6 +377,7 @@
       "init": {
         "title": "EV charging and billing",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -428,9 +442,17 @@
         },
         "description": "Configure billing and charging, then choose one email method. The next step shows only settings for that method. No email saves local invoices only. Gmail (Google app password) needs no connected Google Mail account. Schedule times are saved to the minute."
       },
+      "invoice_billing": {
+        "title": "Invoice Billing Options",
+        "data": {
+          "invoice_billing_option": "Invoice Billing Options"
+        },
+        "description": "Choose how the monthly invoice groups recorded charging: individual daily tariff/rate lines, combined daily charges, monthly tariff totals or one monthly total. Fees and tax remain separate; totals and recorded rates do not change. Older usage without daily detail remains a labelled summary. The branded invoice layout is automatically populated from seller/customer and payment settings and attached as a PDF whenever invoice email is enabled. This does not change the monthly sending schedule or send a test email."
+      },
       "tariffs": {
         "title": "Time-based charge rates",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -498,6 +520,7 @@
       "email_gmail": {
         "title": "Gmail with Google app password",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -565,6 +588,7 @@
       "email_gmail_oauth": {
         "title": "Connected Google Mail account",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -632,6 +656,7 @@
       "email_custom": {
         "title": "Custom SMTP email",
         "data": {
+          "invoice_billing_option": "Invoice Billing Options",
           "name": "Installation name",
           "use_tariff_bands": "Configure time-based tariff bands",
           "billing_scope": "When to record billable charging",
@@ -698,6 +723,7 @@
       }
     },
     "error": {
+      "invalid_invoice_option": "Choose one of the four invoice billing layouts.",
       "empty_tariff_window": "Choose different from/to times. Overnight windows are supported.",
       "overlapping_tariffs": "Enabled tariff windows overlap. Use adjacent end/start times; each minute must match at most one band.",
       "invalid_rate_sensor": "Choose a rate sensor with units matching the billing currency, such as AUD/kWh. Unavailable readings use the manual fallback rate.",
@@ -719,6 +745,14 @@
     }
   },
   "selector": {
+    "invoice_billing_option": {
+      "options": {
+        "itemised": "Itemised individual tariff charging (default)",
+        "daily": "Combined tariffs - total daily charge",
+        "monthly_tariffs": "Monthly tariff totals",
+        "monthly_total": "Monthly total"
+      }
+    },
     "billing_scope": {
       "options": {
         "scheduled": "Only inside the charging schedule (legacy)",

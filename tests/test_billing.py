@@ -195,3 +195,26 @@ class BillingTests(unittest.TestCase):
         self.advance(self.now.replace(hour=3))
         self.advance(self.now.replace(hour=4))
         self.assertEqual(self.ledger.data["months"]["2026-01"]["kwh"], "0")
+
+    def test_issued_daily_details_and_layout_are_immutable(self):
+        self.config['invoice_billing_option'] = 'daily'
+        self.advance(self.now, Decimal('1000'))
+        self.advance(self.now + timedelta(hours=1), Decimal('1000'))
+        invoice = self.ledger.issue('2026-01', '2026-02', 'id', self.now, True)
+        before = deepcopy(invoice)
+        self.ledger.data['days'][self.now.strftime('%Y-%m-%d')]['kwh'] = '999'
+        self.ledger.data['months']['2026-01']['settings']['invoice_billing_option'] = 'monthly_total'
+        self.assertEqual(invoice, before)
+        self.assertEqual(invoice['settings']['invoice_billing_option'], 'daily')
+
+    def test_layout_at_issue_applies_to_unissued_period_only(self):
+        self.advance(self.now, Decimal('1000'))
+        self.advance(self.now + timedelta(hours=1), Decimal('1000'))
+        invoice = self.ledger.issue('2026-01', '2026-02', 'id', self.now, True,
+                                    invoice_billing_option='monthly_total')
+        self.assertEqual(invoice['settings']['invoice_billing_option'], 'monthly_total')
+        self.assertEqual(invoice['total'], '0.30')
+        repeated = self.ledger.issue('2026-01', '2026-02', 'id', self.now, True,
+                                     invoice_billing_option='daily')
+        self.assertEqual(repeated, invoice)
+        self.assertEqual(repeated['settings']['invoice_billing_option'], 'monthly_total')

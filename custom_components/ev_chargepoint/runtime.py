@@ -138,7 +138,8 @@ class BillingRuntime(DataUpdateCoordinator):
             if period >= current:
                 continue
             try:
-                invoice = self.ledger.issue(period, current, self.entry.entry_id, now, approve)
+                invoice = self.ledger.issue(period, current, self.entry.entry_id, now, approve,
+                    invoice_billing_option=self.config.get("invoice_billing_option", "itemised"))
             except ValueError:
                 continue
             await self.store.async_save(self.ledger.data)
