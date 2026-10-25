@@ -15,7 +15,7 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.4.1.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.4.2.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
@@ -92,7 +92,7 @@ EV ChargePoint never reads or copies Google's OAuth tokens.
 Invoices use the original recipient saved in their immutable snapshot. Missing
 recipient information on an old invoice is not retroactively filled in. Failed
 or interrupted sends still require explicit retry to avoid duplicate emails.
-Messages contain the printable HTML invoice; this mode does not attach a PDF.
+Messages contain the printable HTML invoice and a branded PDF attachment. PDF delivery reuses the loaded Google Mail account's authorized client without reading or copying OAuth tokens; if that client is unavailable, sending fails rather than silently omitting the PDF.
 
 The existing app-password method remains available:
 
@@ -149,17 +149,15 @@ currency changes within a month are not supported. Issued invoices retain their
 snapshot and are never recalculated. To change the customer or currency, create
 a new instance with a different sensor after retiring the old instance.
 
-Printable HTML invoices are saved under:
+Printable HTML invoices and matching PDFs are saved under:
 
 ```text
 <config>/ev_chargepoint_invoices/<entry_id>/YYYY-MM.html
+<config>/ev_chargepoint_invoices/<entry_id>/YYYY-MM.pdf
 ```
 
-Open these files from your Home Assistant configuration storage and use the
-browser's Print â†’ Save as PDF if needed. Files are deliberately outside `www`
-and are not exposed as unauthenticated web links. Emails contain the complete
-invoice in plain text and HTML; PDF attachments and online payment collection are not
-included in this version.
+Open these files from your Home Assistant configuration storage. Files are deliberately outside `www`
+and are not exposed as unauthenticated web links. Emails contain the complete invoice in plain text and HTML, plus the branded PDF attachment. Online payment collection is not included.
 
 Email state `submitted` means the SMTP server accepted the message, not proof
 of delivery to the recipient. Failed or interrupted (`sending`) attempts are
@@ -311,3 +309,11 @@ The box shows actual outlet state, power and the active tariff's current charge 
 - [Activity](https://github.com/wholly1971/ha-ev-chargepoint/activity) and [release history](https://github.com/wholly1971/ha-ev-chargepoint/releases).
 
 The badges use live release, CI and OpenSSF data; the Scorecard badge can be unavailable until its first published scan. A Scorecard rating is an automated repository-practice assessment, not certification that the integration is vulnerability-free. OpenSSF Best Practices Passing/Silver/Gold status is not claimed: it requires separate project enrollment and an evidence-based assessment at [bestpractices.dev](https://www.bestpractices.dev/).
+
+### Designed PDF invoices (0.4.2)
+
+Issued invoices are rendered as A4 PDFs with the EV ChargePoint logo, navy invoice heading, coral table rules, seller/customer blocks, invoice number/date/period, quantity in kWh, tariff descriptions, unit rates, line amounts, subtotal, configured tax, total, billing notes and payment details. Long invoices continue onto numbered pages. Seller and Customer fields accept multiline names and addresses; enter your actual payment terms in Payment instructions. No bank details, due date, signature, purchase order or shipping address is invented.
+
+Every invoice email now attaches the PDF for Gmail app passwords, custom SMTP and connected Google Mail. Connected Google Mail PDF delivery uses the Home Assistant 2026.10 account runtime client because the native notification action supports HTML only; a missing client causes an explicit failure requiring review/retry. The existing recipient snapshot and uncertain-send safeguards remain in effect. Test email remains a simple marked connectivity test and does not issue or attach a customer invoice.
+
+PDF and HTML files stay in the private invoice folder, outside `www`. Existing issued accounting snapshots and existing HTML files are preserved; missing PDFs are generated from their saved snapshots. An update does not resend submitted invoices or approve incomplete periods. ReportLab 4.4.9 is installed automatically as an integration dependency. Future monthly invoice emails use the new PDF automatically when automatic delivery is enabled.

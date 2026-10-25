@@ -11,6 +11,7 @@ from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
 import unittest
+from tempfile import TemporaryDirectory
 from unittest.mock import AsyncMock, Mock, patch
 
 
@@ -122,6 +123,31 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.mail.assert_called_once()
         self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "submitted")
 
+    async def test_save_failure_withholds_email_and_keeps_snapshot_pending(self):
+        self.runtime._write_invoice = Mock(side_effect=ValueError('PDF failed'))
+        await self.runtime._invoice_completed(NOW)
+        self.assertIn('2026-01', self.runtime.ledger.data['invoices'])
+        self.assertEqual(self.runtime.ledger.data['delivery']['2026-01'], 'pending')
+        self.mail.assert_not_called()
+
+    async def test_pdf_and_html_are_private_and_idempotent(self):
+        invoice = self.runtime.ledger.issue('2026-01', '2026-02', 'entry', NOW)
+        with TemporaryDirectory() as directory:
+            self.hass.config = SimpleNamespace(path=lambda *parts: str(Path(directory).joinpath(*parts)))
+            write = runtime_module.BillingRuntime._write_invoice
+            write(self.runtime, invoice)
+            folder = Path(directory) / 'ev_chargepoint_invoices' / 'entry'
+            html = folder / '2026-01.html'
+            pdf = folder / '2026-01.pdf'
+            self.assertTrue(pdf.read_bytes().startswith(b'%PDF-'))
+            original = pdf.read_bytes()
+            html.write_text('Existing private invoice', encoding='utf-8')
+            write(self.runtime, invoice)
+            self.assertEqual(pdf.read_bytes(), original)
+            pdf.unlink()
+            write(self.runtime, invoice)
+            self.assertTrue(pdf.read_bytes().startswith(b'%PDF-'))
+            self.assertEqual(html.read_text(encoding='utf-8'), 'Existing private invoice')
     async def test_gmail_oauth_uses_connected_account_without_smtp(self):
         self.runtime.config["smtp_provider"] = "gmail_oauth"
         send = AsyncMock()

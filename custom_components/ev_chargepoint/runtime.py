@@ -19,6 +19,7 @@ from .billing import Ledger, decimal, in_window, invoice_html
 from .const import DEFAULTS, DOMAIN
 from .tariffs import resolve_rates
 from .branding import logo_data_uri
+from .pdf_invoice import invoice_pdf
 from .mail import send_invoice, send_test_email
 from .gmail import async_send_invoice as async_send_gmail_invoice, async_send_test_email as async_send_gmail_test
 
@@ -141,7 +142,11 @@ class BillingRuntime(DataUpdateCoordinator):
             except ValueError:
                 continue
             await self.store.async_save(self.ledger.data)
-            await self.hass.async_add_executor_job(self._write_invoice, invoice)
+            try:
+                await self.hass.async_add_executor_job(self._write_invoice, invoice)
+            except (OSError, ValueError):
+                _LOGGER.warning("Could not save EV invoice files for %s; delivery withheld", self.entry.entry_id)
+                continue
             if self.config["auto_email"] and self.ledger.data["delivery"].get(period) == "pending":
                 await self._send(period)
 
@@ -150,11 +155,15 @@ class BillingRuntime(DataUpdateCoordinator):
         folder.mkdir(parents=True, exist_ok=True)
         # Regenerate the same immutable snapshot atomically after interruptions.
         path = folder / f"{invoice['period']}.html"
-        if path.exists():
-            return
-        temporary = path.with_suffix(".tmp")
-        temporary.write_text(invoice_html(invoice, logo_src=logo_data_uri()), encoding="utf-8")
-        temporary.replace(path)
+        if not path.exists():
+            temporary = path.with_suffix(".html.tmp")
+            temporary.write_text(invoice_html(invoice, logo_src=logo_data_uri()), encoding="utf-8")
+            temporary.replace(path)
+        pdf_path = folder / f"{invoice['period']}.pdf"
+        if not pdf_path.exists():
+            temporary = pdf_path.with_suffix(".pdf.tmp")
+            temporary.write_bytes(invoice_pdf(invoice))
+            temporary.replace(pdf_path)
 
     async def _send(self, period):
         if self.config.get("smtp_provider") == "none":

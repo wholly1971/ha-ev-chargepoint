@@ -7,6 +7,7 @@ import ssl
 
 from .billing import invoice_html, invoice_text
 from .branding import logo_bytes
+from .pdf_invoice import invoice_pdf, invoice_filename
 
 
 def smtp_settings(config):
@@ -66,6 +67,8 @@ def send_invoice(config, invoice):
         disposition="inline",
         filename="ev-chargepoint-logo.png",
     )
+    message.add_attachment(invoice_pdf(invoice), maintype="application", subtype="pdf",
+                           filename=invoice_filename(invoice))
     _submit_message(config, message)
 
 
