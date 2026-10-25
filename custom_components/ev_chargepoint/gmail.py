@@ -1,11 +1,14 @@
 """Reuse Home Assistant Google Mail authorization, without copying its tokens."""
 
 from email.utils import parseaddr
+from email.message import EmailMessage
+from base64 import urlsafe_b64encode
 
 from homeassistant.util import slugify
 from homeassistant.exceptions import HomeAssistantError
 
-from .billing import invoice_html
+from .billing import invoice_html, invoice_text
+from .pdf_invoice import invoice_pdf, invoice_filename
 
 
 def resolve_gmail(hass, entry_id=""):
@@ -37,9 +40,30 @@ async def async_send_invoice(hass, config, invoice):
     """Use the connected account's default From address and immutable recipient."""
     recipient = invoice["settings"].get("customer_email", "")
     validate_recipient(recipient)
-    service = resolve_gmail(hass, config.get("gmail_account", ""))
-    await _async_submit(hass, service, recipient,
-                        f"EV ChargePoint invoice {invoice['number']}", invoice_html(invoice))
+    resolve_gmail(hass, config.get("gmail_account", ""))
+    # Native notify only sends MIMEText (no attachments). Reuse the loaded
+    # account's authorized client without reading/copying OAuth tokens.
+    entries = list(hass.config_entries.async_entries("google_mail"))
+    selected = config.get("gmail_account", "")
+    entry = next((entry for entry in entries if entry.entry_id == selected), None) if selected else entries[0]
+    auth = getattr(entry, "runtime_data", None)
+    if auth is None or not callable(getattr(auth, "get_resource", None)):
+        raise HomeAssistantError("Connected Gmail PDF client is unavailable; reconnect Google Mail")
+    try:
+        message = EmailMessage()
+        message["To"] = recipient
+        message["From"] = "me"
+        message["Subject"] = f"EV ChargePoint invoice {invoice['number']}"
+        message.set_content(invoice_text(invoice))
+        message.add_alternative(invoice_html(invoice), subtype="html")
+        pdf = await hass.async_add_executor_job(invoice_pdf, invoice)
+        message.add_attachment(pdf, maintype="application", subtype="pdf", filename=invoice_filename(invoice))
+        resource = await auth.get_resource()
+        raw = urlsafe_b64encode(message.as_bytes()).decode("ascii")
+        request = resource.users().messages().send(userId="me", body={"raw": raw})
+        await hass.async_add_executor_job(request.execute)
+    except Exception as err:
+        raise HomeAssistantError("Google Mail PDF submission failed; review before retrying") from err
 
 
 async def async_send_test_email(hass, config):

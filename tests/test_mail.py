@@ -57,6 +57,11 @@ class MailTests(unittest.TestCase):
             self.assertEqual(message["To"], "customer@example.com")
             self.assertEqual(message["From"], "sender@example.com")
             self.assertIn("text/html", message.as_string())
+            attachments = list(message.iter_attachments())
+            self.assertEqual(len(attachments), 1)
+            self.assertEqual(attachments[0].get_content_type(), "application/pdf")
+            self.assertEqual(attachments[0].get_filename(), self.invoice['number'] + '.pdf')
+            self.assertTrue(attachments[0].get_payload(decode=True).startswith(b"%PDF-"))
             self.assertIn("<ev-chargepoint-logo>", message.as_string())
             self.assertIn(
                 "cid:ev-chargepoint-logo", message.get_body(preferencelist=("html",)).get_content()
@@ -140,5 +145,6 @@ class MailTests(unittest.TestCase):
             self.assertEqual(message["Subject"], "EV ChargePoint test email")
             self.assertEqual(message["To"], self.config["customer_email"])
             self.assertIn("not an invoice", message.get_content())
+            self.assertEqual(list(message.iter_attachments()), [])
             self.assertEqual(factory.call_args.kwargs["host"], "smtp.gmail.com")
             smtp.login.assert_called_once_with("sender@example.com", "abcdefghijklmnop")

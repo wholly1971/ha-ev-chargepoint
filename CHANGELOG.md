@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 - 2026-10-25
+
+- Add branded, paginated A4 PDF invoices with seller/customer details, tariff rows, tax totals, billing notes and payment instructions.
+- Attach PDFs to invoice email through SMTP/Gmail app passwords and the existing authorized Google Mail client, without copying OAuth credentials.
+- Save PDFs beside private HTML invoices using immutable accounting snapshots; preserve historical amounts, recipients and submitted-send status.
+- Withhold email if invoice files cannot be generated; retain explicit retry safeguards. Test email remains a connectivity test without an invoice.
+- Add ReportLab dependency and regressions for PDF generation, legacy rate rows, attachment MIME data and private idempotent storage.
+
 ## 0.4.1 — 2026-10-25
 
 - Add Manual charge On/Off and Resume schedule controls through a native Charging mode selector. Overrides return to automatic at the next charging-schedule transition and reset on restart/reload.
