@@ -41,6 +41,21 @@ class PricingTests(unittest.TestCase):
 
 
 class TariffRateTests(unittest.TestCase):
+    def test_manual_gst_fallback_and_sensor_are_each_normalized_once(self):
+        package = ModuleType('gst_tariff_test')
+        package.__path__ = [str(ROOT)]
+        spec = importlib.util.spec_from_file_location('gst_tariff_test.tariffs', ROOT / 'tariffs.py')
+        module = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, {'gst_tariff_test': package}):
+            spec.loader.exec_module(module)
+        config = {'currency': 'AUD', 'tax_percent': '10', 'tariff_peak_rate': '0.33',
+                  'tariff_peak_rate_includes_gst': True, 'tariff_peak_sensor': 'sensor.rate',
+                  'tariff_peak_sensor_includes_tax': True, 'sensor_rate_tax_percent': '10'}
+        for value, expected, source in [('unknown', '0.3', 'fallback'), ('0.44', '0.4', 'sensor')]:
+            state = SimpleNamespace(state=value, attributes={'unit_of_measurement': 'AUD/kWh'})
+            hass = SimpleNamespace(states=SimpleNamespace(get=lambda _: state))
+            self.assertEqual(module.resolve_rates(hass, config)['peak'], {'rate': expected, 'source': source})
+
     def test_sensor_tax_conversion_and_fallback(self):
         package = ModuleType("tariff_test")
         package.__path__ = [str(ROOT)]

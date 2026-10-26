@@ -1,14 +1,14 @@
 """Resolve selected rate sensors without copying credentials or inferring tariff windows."""
 
 from decimal import InvalidOperation
-from .billing import BAND_NAMES, decimal, tariff_at
+from .billing import BAND_NAMES, decimal, tariff_at, net_amount
 
 
 def resolve_rates(hass, config):
     result = {}
     for band in BAND_NAMES:
         prefix = "tariff_" + band + "_"
-        rate = config.get(prefix + "rate", "0")
+        rate = str(net_amount(config, prefix + "rate"))
         entity_id = config.get(prefix + "sensor")
         source = "fallback" if entity_id else "manual"
         state = hass.states.get(entity_id) if entity_id else None
@@ -30,7 +30,7 @@ def tariff_config(hass, config):
     resolved = resolve_rates(hass, config)
     return [{"id": band, "name": name,
              "enabled": bool(config.get("use_tariff_bands") and config.get("tariff_" + band + "_enabled")),
-             **{key: config.get("tariff_" + band + "_" + key) for key in ("start", "end", "rate", "sensor", "sensor_includes_tax")},
+             **{key: config.get("tariff_" + band + "_" + key) for key in ("start", "end", "rate", "rate_includes_gst", "sensor", "sensor_includes_tax")},
              "effective_rate": resolved[band]["rate"], "source": resolved[band]["source"]}
             for band, name in BAND_NAMES.items()]
 

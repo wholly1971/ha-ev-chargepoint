@@ -5,6 +5,8 @@ DEFAULTS = {
     "name": "EV charging",
     "currency": "AUD",
     "rate": "0.30",
+    "rate_includes_gst": False,
+    "fixed_fee_includes_gst": False,
     "fixed_fee": "0.00",
     "tax_percent": "0",
     "schedule_mode": "all_day",
@@ -36,4 +38,4 @@ DEFAULTS.update(use_tariff_bands=False, billing_scope="scheduled", sensor_rate_t
 for band in TARIFF_BANDS:
     DEFAULTS.update({f"tariff_{band}_enabled": False, f"tariff_{band}_start": "00:00:00",
                      f"tariff_{band}_end": "00:00:00", f"tariff_{band}_rate": "0",
-                     f"tariff_{band}_sensor_includes_tax": True})
+                     f"tariff_{band}_sensor_includes_tax": True, f"tariff_{band}_rate_includes_gst": False})

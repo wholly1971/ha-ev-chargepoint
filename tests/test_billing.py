@@ -63,6 +63,50 @@ class BillingTests(unittest.TestCase):
         self.advance(self.now + timedelta(hours=1))
         self.assertEqual(self.ledger.totals("2026-01"), ("3.16", "0.32", "3.48"))
 
+    def test_inclusive_rate_and_fee_extract_gst_once(self):
+        self.config.update(rate='0.33', rate_includes_gst=True, fixed_fee='11',
+                           fixed_fee_includes_gst=True, tax_percent='10')
+        self.advance(self.now, Decimal('1000'))
+        self.advance(self.now + timedelta(hours=1), Decimal('1000'))
+        self.assertEqual(self.ledger.totals('2026-01'), ('10.30', '1.03', '11.33'))
+        invoice = self.ledger.issue('2026-01', '2026-02', 'id', self.now, True)
+        self.assertEqual(invoice['tax_breakdown'], {'10': '1.03'})
+        self.assertIn('GST included in total: 1.03', billing.invoice_text(invoice))
+
+    def test_mixed_inclusive_and_exclusive_tariffs(self):
+        self.config.update(rate='0.33', rate_includes_gst=True, tax_percent='10', use_tariff_bands=True,
+            tariff_peak_enabled=True, tariff_peak_start='01:00:00', tariff_peak_end='02:00:00',
+            tariff_peak_rate='0.40', tariff_peak_rate_includes_gst=False)
+        self.advance(self.now, Decimal('1000'))
+        self.advance(self.now + timedelta(hours=2), Decimal('1000'))
+        self.assertEqual(self.ledger.totals('2026-01'), ('0.70', '0.07', '0.77'))
+
+    def test_gst_policy_changes_do_not_tax_previous_energy_again(self):
+        self.config.update(rate='0.33', tax_percent='0')
+        self.advance(self.now, Decimal('1000'))
+        self.advance(self.now + timedelta(hours=1), Decimal('1000'))
+        self.config.update(rate_includes_gst=True, tax_percent='10')
+        self.advance(self.now + timedelta(hours=2), Decimal('1000'))
+        self.assertEqual(self.ledger.totals('2026-01'), ('0.63', '0.03', '0.66'))
+        self.assertEqual(billing.tax_summary(self.ledger.data['months']['2026-01']), {'0': '0.00', '10': '0.03'})
+
+    def test_old_ledger_energy_keeps_its_previous_tax_policy(self):
+        self.config.update(rate='0.33', tax_percent='0')
+        self.advance(self.now, Decimal('1000'))
+        self.advance(self.now + timedelta(hours=1), Decimal('1000'))
+        self.ledger.data['months']['2026-01'].pop('tax_bases')
+        self.config.update(rate_includes_gst=True, tax_percent='10')
+        self.advance(self.now + timedelta(hours=2), Decimal('1000'))
+        self.assertEqual(self.ledger.totals('2026-01')[2], '0.66')
+
+    def test_decimal_gst_percentage_is_one_tax_group(self):
+        self.config.update(tax_percent='10.0')
+        self.advance(self.now, Decimal('1000'))
+        self.advance(self.now + timedelta(hours=1), Decimal('1000'))
+        self.config['tax_percent'] = '10'
+        self.advance(self.now + timedelta(hours=2), Decimal('1000'))
+        self.assertEqual(set(self.ledger.data['months']['2026-01']['tax_bases']), {'10'})
+
     def test_restart_marks_gap(self):
         self.advance(self.now)
         self.ledger = billing.Ledger(deepcopy(self.ledger.data))

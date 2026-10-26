@@ -15,7 +15,7 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.4.3.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.4.4.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
@@ -42,7 +42,7 @@ integration â†’ EV ChargePoint**. EV ChargePoint is a service integration a
 not created through the Helpers tab. Add one entry per customer/charger.
 Change an existing entry through **Settings â†’ Devices & services â†’ Integrations
 â†’ EV ChargePoint â†’ Configure**. Default rate AUD 0.30/kWh is an example; replace it with your rate.
-Rates and fixed fees are tax-exclusive. Currency uses two decimal places.
+Rates and fixed fees are tax-exclusive unless their Includes GST checkbox is selected. Currency uses two decimal places.
 
 Haggle can remain installed for AGL history. EV ChargePoint reads the selected live
 EV power entity; it does not read Haggle's external whole-property statistics or
@@ -143,8 +143,7 @@ missing data need approval even if measured consumption is zero.
 
 Invoices contain a stable identifier, monthly period, seller/customer details,
 kWh grouped by tariff, fee, subtotal, tax, total, and payment instructions.
-Tariff changes apply to future measured intervals. The fixed fee, tax,
-currency and customer details use the last configuration recorded in that month;
+Tariff changes apply to future measured intervals. The fixed fee, currency and customer details use the last configuration recorded in that month; GST on newly measured energy is recorded prospectively at its then-configured percentage;
 currency changes within a month are not supported. Issued invoices retain their
 snapshot and are never recalculated. To change the customer or currency, create
 a new instance with a different sensor after retiring the old instance.
@@ -284,7 +283,7 @@ The HACS repository description uses an absolute HTTPS image URL so its logo als
 
 In Configure, enable **Configure time-based tariff bands**. The next screen provides **Peak**, **Off Peak**, **Shoulder 1**, **Shoulder 2** and **EV Night**. For each band enter From, To, a manual/fallback rate and optionally a Home Assistant rate sensor. Enable only bands you use; there are no guessed utility-plan times or rates. Windows repeat daily, use Home Assistant local time, include From and exclude To, and can cross midnight. Enabled windows cannot overlap or have equal start/end times. Uncovered times use the existing default rate.
 
-A selected sensor must use the billing currency per kWh (for example AUD/kWh). A valid nonnegative sensor value replaces that band's manual rate prospectively. Unknown, unavailable, nonfinite, wrong-unit or negative readings use the manual fallback and are reported as fallback usage. Sensor state changes split pricing at the event boundary. Enable **Sensor price includes tax** for GST-inclusive Haggle prices and enter the included sensor tax percentage (usually 10); that tax is removed before the invoice's configured tax is applied. Manual rates are tax-exclusive. No rate or time is inferred from a sensor name or the AGL reference module.
+A selected sensor must use the billing currency per kWh (for example AUD/kWh). A valid nonnegative sensor value replaces that band's manual rate prospectively. Unknown, unavailable, nonfinite, wrong-unit or negative readings use the manual fallback and are reported as fallback usage. Sensor state changes split pricing at the event boundary. Enable **Sensor price includes tax** for GST-inclusive Haggle prices and enter the included sensor tax percentage (usually 10); that tax is removed before the invoice's configured tax is applied. Manual rates are tax-exclusive unless their Includes GST checkbox is selected. No rate or time is inferred from a sensor name or the AGL reference module.
 
 **When to record billable charging** controls billing scope independently of charger switch control. Choose **All measured charging, including outside the schedule** to price manual/out-of-schedule charging. The legacy **Only inside the charging schedule** option retains earlier behavior. Existing installs keep that legacy scope until changed. The charging window still controls the switch when automatic control is enabled; disable automatic switch control to operate the outlet manually. Tariff settings never override the switch schedule by themselves.
 
@@ -330,3 +329,11 @@ Open **Settings > Devices & services > EV ChargePoint > Configure**. Submit the 
 Every choice uses the same monthly billing period and the same recorded energy costs, monthly fee, tax and grand total. Combined rows show a dash for the unit rate. The option changes presentation only; it does not change tariff schedules, charging controls or when email is sent. Fees and tax are shown separately. Daily layouts preserve older usage without daily evidence as a labelled summary instead of guessing dates.
 
 The branded A4 invoice is the default PDF for every choice. Seller/customer details and payment terms come from Configure. When automatic monthly email is enabled, Gmail/SMTP sends the selected invoice layout as a PDF attachment. The matching text/HTML body uses the same grouping. No extra PDF toggle is needed and saving options sends no email. Local-only users can choose the layout too. The selected layout and available daily evidence are copied into newly issued invoice snapshots; existing issued invoices and their delivery state are unchanged.
+
+### GST-inclusive amounts (0.4.4)
+
+In Configure, tick **Default rate includes GST** or **Monthly fixed fee includes GST** below the corresponding amount. On the time-based rates page, each Peak/Off Peak/Shoulder/EV Night manual fallback rate has its own **includes GST** checkbox. Selected rate sensors keep their separate sensor-price GST checkbox; a valid sensor price and its manual fallback are normalized separately, so GST is extracted only once. Reference-only AGL supply/feed-in values are not invoice charges.
+
+Set **GST / tax percentage** to the applicable positive percentage (normally 10 for Australian GST) before selecting an inclusive amount. At 10%, AUD 110 including GST contains AUD 100 net plus AUD 10 GST; the billed total stays AUD 110. An unticked amount is exclusive and has the configured GST added. Mixed inclusive/exclusive rates and fees can appear on the same invoice. The checkboxes default off for existing manual prices; no existing price is assumed inclusive.
+
+All four invoice layouts show net line amounts, subtotal, **GST included in total**, and the final total. Included GST is extracted for disclosure, not added again. A GST breakdown records the percentages used. Recorded energy preserves its earlier GST percentage when settings change mid-month; older unissued ledgers retain their previous stored tax treatment when future metering resumes. The monthly fee remains a once-per-month amount using the period's final settings. Existing issued invoices are unchanged. Unit prices are displayed to six decimals; money remains Decimal-based and is rounded to cents. No tax setting is enabled automatically.

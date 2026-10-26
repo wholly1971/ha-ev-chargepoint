@@ -5,7 +5,7 @@ from io import BytesIO
 from pathlib import Path
 import re
 
-from .billing import decimal, money, invoice_items, INVOICE_LAYOUT_LABELS
+from .billing import decimal, money, invoice_items, INVOICE_LAYOUT_LABELS, net_amount
 from .branding import logo_bytes
 
 
@@ -86,26 +86,30 @@ def _render_pdf(invoice, *, sample=False):
     story += [meta, Spacer(1, 24)]
     data = [[p("QTY / kWh", label), p("DESCRIPTION", label), p(f"UNIT RATE / {currency}", label), p(f"AMOUNT / {currency}", label)]]
     for name, quantity, rate, amount in invoice_rows(invoice):
-        rate_text = f"{rate.normalize():f}" if rate is not None else "-"
+        rate_text = (f"{rate:.6f}".rstrip("0").rstrip(".") if rate is not None else "-")
+        if rate is not None and rate and decimal(rate_text) == 0:
+            rate_text = f"{rate.normalize():f}"
         if rate is not None and "." not in rate_text:
             rate_text += ".00"
         elif rate is not None and len(rate_text.rsplit(".", 1)[1]) < 2:
             rate_text += "0"
         data.append([p(f"{quantity:.6f}", right), p(name), p(rate_text, right), p(money(amount), right)])
-    if decimal(config.get("fixed_fee", "0")):
-        data.append([p("1", right), p("Monthly fixed fee"), p(money(config["fixed_fee"]), right), p(money(config["fixed_fee"]), right)])
+    if net_amount(config, "fixed_fee"):
+        data.append([p("1", right), p("Monthly fixed fee"), p(money(net_amount(config, "fixed_fee")), right), p(money(net_amount(config, "fixed_fee")), right)])
     if len(data) == 1:
         data.append([p("0", right), p("No recorded billable charging"), p("-", right), p("0.00", right)])
     table = Table(data, colWidths=[73, width - 270, 97, 100], repeatRows=1, hAlign="LEFT")
     table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEABOVE", (0, 0), (-1, 0), 1.2, coral), ("LINEBELOW", (0, 0), (-1, 0), 1.2, coral), ("BOTTOMPADDING", (0, 0), (-1, -1), 10), ("TOPPADDING", (0, 0), (-1, -1), 10), ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)]))
     story += [table, Spacer(1, 12)]
     totals = Table([[p("Subtotal", right), p(invoice["subtotal"], right)],
-                    [p(f"Tax ({config['tax_percent']}%)", right), p(invoice["tax"], right)],
+                    [p("GST included in total", right), p(invoice["tax"], right)],
                     [p(f"TOTAL {currency}", label), p(f"{currency} {invoice['total']}", ParagraphStyle("EVTotal", parent=right, fontName="EVSansBold", fontSize=15, leading=20))]],
                    colWidths=[170, 125], hAlign="RIGHT")
     totals.setStyle(TableStyle([("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7), ("LINEABOVE", (0, 2), (-1, 2), 1, coral), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-    story += [totals, Spacer(1, 16), p("Rates exclude tax. A dash in Unit rate means combined recorded rates. Totals use unrounded recorded energy; displayed line amounts are rounded to two decimal places.", small)]
+    story += [totals, Spacer(1, 16), p("Prices shown exclude GST. GST-inclusive inputs have their GST extracted once. A dash in Unit rate means combined recorded rates. Totals use unrounded recorded energy; displayed rates use up to six decimals and amounts are rounded to two decimals.", small)]
     notes = []
+    if invoice.get("tax_breakdown"):
+        notes.append("GST breakdown: " + "; ".join(f"{rate}%: {currency} {amount}" for rate, amount in invoice["tax_breakdown"].items()))
     if invoice.get("partial") or invoice.get("gap_seconds"):
         notes.append(f"Approved incomplete period. Missing data: {invoice.get('gap_seconds', 0)} seconds. Only recorded usage is billed.")
     for item in invoice.get("tariffs", {}).values():

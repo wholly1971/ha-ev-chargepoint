@@ -57,6 +57,9 @@ def schema(values, hass=None):
         fields[vol.Required(key, default=default(key))] = selector.BooleanSelector()
     for key in ("currency", "rate", "fixed_fee", "tax_percent"):
         fields[vol.Required(key, default=default(key))] = selector.TextSelector()
+        if key in ("rate", "fixed_fee"):
+            flag = key + "_includes_gst"
+            fields[vol.Required(flag, default=default(flag))] = selector.BooleanSelector()
     fields[vol.Required("max_age", default=default("max_age"))] = vol.All(
         vol.Coerce(int), vol.Range(min=30, max=86400)
     )
@@ -125,10 +128,10 @@ def tariff_schema(values):
     fields = {}
     for band in TARIFF_BANDS:
         prefix = "tariff_" + band + "_"
-        for suffix in ("enabled", "start", "end", "rate", "sensor_includes_tax"):
+        for suffix in ("enabled", "start", "end", "rate", "rate_includes_gst", "sensor_includes_tax"):
             key = prefix + suffix
             marker = vol.Required(key, default=values.get(key, DEFAULTS[key]))
-            if suffix in ("enabled", "sensor_includes_tax"):
+            if suffix in ("enabled", "rate_includes_gst", "sensor_includes_tax"):
                 fields[marker] = selector.BooleanSelector()
             elif suffix in ("start", "end"):
                 fields[marker] = selector.TimeSelector()
@@ -154,6 +157,8 @@ def validate_tariffs(hass, data):
         prefix = "tariff_" + band + "_"
         if not data.get(prefix + "enabled"):
             continue
+        if data.get(prefix + "rate_includes_gst") and decimal(data.get("tax_percent", "0")) <= 0:
+            raise ConfigValidationError(prefix + "rate_includes_gst", "gst_rate_required")
         minutes = []
         for suffix in ("start", "end"):
             key = prefix + suffix
@@ -268,6 +273,11 @@ def validate(hass, data, entry_id=None):
             raise ConfigValidationError(key, "invalid_amount") from exc
     if decimal(data["tax_percent"]) > 100:
         raise ConfigValidationError("tax_percent", "invalid_tax")
+    inclusive = data.get("rate_includes_gst") or data.get("fixed_fee_includes_gst") or any(
+        data.get("use_tariff_bands") and data.get(f"tariff_{band}_enabled") and data.get(f"tariff_{band}_rate_includes_gst")
+        for band in TARIFF_BANDS)
+    if inclusive and decimal(data["tax_percent"]) <= 0:
+        raise ConfigValidationError("tax_percent", "gst_rate_required")
     data["currency"] = data["currency"].strip().upper()
     if (
         len(data["currency"]) != 3
