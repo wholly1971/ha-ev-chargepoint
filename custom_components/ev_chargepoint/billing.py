@@ -30,6 +30,30 @@ def money(value):
     return str(decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
+def net_amount(config, key):
+    """Extract included GST once; all stored price lines remain tax-exclusive."""
+    value = decimal(config.get(key, "0"))
+    if config.get(key + "_includes_gst", False):
+        value /= 1 + decimal(config["tax_percent"]) / 100
+    return value
+
+
+def tax_bases(bucket):
+    """Old unissued energy retains its recorded period's previous tax treatment."""
+    if "tax_bases" in bucket:
+        return dict(bucket["tax_bases"])
+    cost = sum((decimal(rate) * decimal(kwh) for rate, kwh in bucket["lines"].items()), ZERO)
+    return {f"{decimal(bucket['settings']['tax_percent']).normalize():f}": str(cost)} if cost else {}
+
+
+def tax_summary(bucket):
+    config = bucket["settings"]
+    bases = {rate: decimal(value) for rate, value in tax_bases(bucket).items()}
+    rate = f"{decimal(config['tax_percent']).normalize():f}"
+    bases[rate] = bases.get(rate, ZERO) + net_amount(config, "fixed_fee")
+    return {rate: money(value * decimal(rate) / 100) for rate, value in bases.items() if value}
+
+
 def in_window(now, config):
     if config["schedule_mode"] == "all_day":
         return True
@@ -55,8 +79,8 @@ def tariff_at(now, config):
                 "end_time": config[prefix + "end"],
             }):
                 resolved = config.get("_tariff_rates", {}).get(band, {})
-                return band, name, str(resolved.get("rate", config[prefix + "rate"])), resolved.get("source", "manual")
-    return "default", "Default rate", str(config["rate"]), "manual"
+                return band, name, str(resolved["rate"] if "rate" in resolved else net_amount(config, prefix + "rate")), resolved.get("source", "manual")
+    return "default", "Default rate", str(net_amount(config, "rate")), "manual"
 
 
 def add_tariff(target, band, name, rate, energy, source, outside):
@@ -109,6 +133,7 @@ class Ledger:
                         },
                     )
                     if period not in self.data["invoices"]:
+                        bucket.setdefault("tax_bases", tax_bases(bucket))
                         seconds = decimal((stop - cursor).total_seconds())
                         day = local.strftime("%Y-%m-%d")
                         daily = self.data["days"].setdefault(
@@ -123,6 +148,8 @@ class Ledger:
                             lines = bucket["lines"]
                             lines[rate] = str(decimal(lines.get(rate, "0")) + energy)
                             bucket["kwh"] = str(decimal(bucket["kwh"]) + energy)
+                            tax_rate = f"{decimal(config['tax_percent']).normalize():f}"
+                            bucket["tax_bases"][tax_rate] = str(decimal(bucket["tax_bases"].get(tax_rate, "0")) + energy * decimal(rate))
                             daily["kwh"] = str(decimal(daily["kwh"]) + energy)
                             daily["energy_cost"] = str(
                                 decimal(daily["energy_cost"]) + energy * decimal(rate)
@@ -151,8 +178,11 @@ class Ledger:
         energy_cost = sum(
             (decimal(rate) * decimal(kwh) for rate, kwh in bucket["lines"].items()), ZERO
         )
-        subtotal = decimal(money(energy_cost + decimal(config["fixed_fee"])))
-        tax = decimal(money(subtotal * decimal(config["tax_percent"]) / 100))
+        subtotal = decimal(money(energy_cost + net_amount(config, "fixed_fee")))
+        if "tax_bases" not in bucket:
+            tax = decimal(money(subtotal * decimal(config["tax_percent"]) / 100))
+        else:
+            tax = sum((decimal(value) for value in tax_summary(bucket).values()), ZERO)
         return money(subtotal), money(tax), money(subtotal + tax)
 
     def issue(self, period, current_period, entry_id, issued_at, approve=False, *, invoice_billing_option=None):
@@ -178,6 +208,7 @@ class Ledger:
                               if day.startswith(period + "-")}),
             "subtotal": subtotal,
             "tax": tax,
+            "tax_breakdown": tax_summary(bucket),
             "total": total,
             "gap_seconds": bucket["gap_seconds"],
             "partial": bucket["partial"],
@@ -286,9 +317,9 @@ def invoice_text(invoice):
             lines.append(f"Legacy recorded energy: {item['quantity']:.6f} kWh (included above; original rate retained)")
     lines.extend(
         [
-            f"Monthly fee: {money(config['fixed_fee'])}",
+            f"Monthly fee (excluding GST): {money(net_amount(config, 'fixed_fee'))}",
             f"Subtotal: {invoice['subtotal']}",
-            f"Tax ({config['tax_percent']}%): {invoice['tax']}",
+            f"GST included in total: {invoice['tax']}",
             f"TOTAL: {invoice['total']} {config['currency']}",
             "",
             config["payment_instructions"],
@@ -296,6 +327,8 @@ def invoice_text(invoice):
     )
     if invoice["partial"] or invoice["gap_seconds"]:
         lines.append(f"Approved incomplete period. Missing data: {invoice['gap_seconds']} seconds.")
+    if invoice.get("tax_breakdown"):
+        lines.append("GST breakdown: " + "; ".join(f"{rate}%: {amount} {config['currency']}" for rate, amount in invoice["tax_breakdown"].items()))
     return "\n".join(lines)
 
 

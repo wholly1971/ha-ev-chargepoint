@@ -5,6 +5,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .billing import net_amount
 from .reporting import ledger_summary
 from .pricing import pricing_snapshot
 from .tariffs import tariff_config, current_charge_rate
@@ -72,7 +73,9 @@ class BillingSensor(CoordinatorEntity, SensorEntity):
             "email_test": dict(self.coordinator.email_test),
             "email_provider": self.coordinator.config.get("smtp_provider", "none"),
             "automatic_email": self.coordinator.config.get("auto_email", False),
-            "invoice_rate": self.coordinator.config["rate"],
+            "invoice_rate": str(net_amount(self.coordinator.config, "rate")),
+            "entered_default_rate": self.coordinator.config["rate"],
+            "rate_includes_gst": self.coordinator.config.get("rate_includes_gst", False),
             "current_charge_rate": current_charge_rate(self.hass, self.coordinator.config, dt_util.now()),
             "charge_control": {"mode": self.coordinator.charge_mode,
                                "entity_id": self.coordinator.charge_mode_entity_id,

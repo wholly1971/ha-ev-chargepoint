@@ -8,6 +8,22 @@ import unittest
     importlib.util.find_spec("homeassistant"), "Home Assistant is not installed locally"
 )
 class HomeAssistantInterfaceTests(unittest.TestCase):
+    def test_inclusive_prices_require_positive_gst_and_fields_exist(self):
+        from types import SimpleNamespace
+        from custom_components.ev_chargepoint.config_flow import validate, schema, tariff_schema, ConfigValidationError
+        from custom_components.ev_chargepoint.const import DEFAULTS
+        values = {**DEFAULTS, 'power_sensor': 'sensor.ev', 'rate_includes_gst': True}
+        hass = SimpleNamespace(states=SimpleNamespace(get=lambda _: SimpleNamespace(attributes={'unit_of_measurement': 'W'})),
+                               config_entries=SimpleNamespace(async_entries=lambda _: []))
+        with self.assertRaises(ConfigValidationError) as caught:
+            validate(hass, values)
+        self.assertEqual(caught.exception.code, 'gst_rate_required')
+        values['tax_percent'] = '10'
+        validate(hass, values)
+        self.assertIn('rate_includes_gst', {key.schema for key in schema(values).schema})
+        self.assertIn('fixed_fee_includes_gst', {key.schema for key in schema(values).schema})
+        self.assertIn('tariff_peak_rate_includes_gst', {key.schema for key in tariff_schema(values).schema})
+
     def test_connected_gmail_requires_authorization_before_automatic_email(self):
         from types import SimpleNamespace
         from custom_components.ev_chargepoint.config_flow import validate, ConfigValidationError

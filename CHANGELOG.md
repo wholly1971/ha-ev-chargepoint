@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.4 - 2026-10-26
+
+- Add Includes GST checkboxes for the default rate, monthly fixed fee and every manual tariff/fallback rate, alongside existing sensor-price tax controls.
+- Extract included GST once; support mixed inclusive/exclusive inputs and show GST included in total plus its percentage breakdown on PDF and email invoices.
+- Record energy tax bases prospectively so changing GST settings does not retax earlier measured energy. Preserve issued snapshots and previous tax treatment when older unissued ledgers resume.
+- Require a positive configured GST percentage for inclusive manual amounts; preserve existing unchecked defaults and tax settings.
+
 ## 0.4.3 - 2026-10-25
 
 - Add a final Invoice Billing Options page for itemised daily tariff/rate charging, combined daily charges, monthly tariff totals or a single monthly energy total.
