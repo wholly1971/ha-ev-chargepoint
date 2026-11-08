@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.5 - 2026-11-08
+
+- Add a daily kWh bar-chart comparison page to every generated PDF invoice, with calendar days/weekdays, recorded daily total, peak day and average per recorded day.
+- Distinguish measured zero, incomplete days and absent daily history; use only immutable invoice evidence without backfilling usage.
+- Preserve charges, GST, invoice grouping and submitted delivery states; no update-triggered email or historical file overwrite.
+
 ## 0.4.4 - 2026-10-26
 
 - Add Includes GST checkboxes for the default rate, monthly fixed fee and every manual tariff/fallback rate, alongside existing sensor-price tax controls.
