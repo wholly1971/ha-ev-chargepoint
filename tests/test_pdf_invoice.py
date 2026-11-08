@@ -32,6 +32,43 @@ def sample_invoice():
 
 
 class InvoicePdfTests(unittest.TestCase):
+    def test_chart_distinguishes_zero_missing_and_incomplete(self):
+        invoice = sample_invoice()
+        invoice['days'] = {'2026-09-01': {'kwh': '0'},
+                           '2026-09-03': {'kwh': '2.5', 'gap_seconds': 60},
+                           '2026-08-31': {'kwh': '999'}}
+        before = deepcopy(invoice)
+        rows = pdf.daily_usage(invoice)
+        self.assertEqual(len(rows), 30)
+        self.assertEqual(rows[0]['kwh'], Decimal('0'))
+        self.assertIsNone(rows[1]['kwh'])
+        self.assertEqual(rows[2]['kwh'], Decimal('2.5'))
+        self.assertTrue(rows[2]['partial'])
+        self.assertEqual(invoice, before)
+
+    def test_chart_calendar_handles_leap_february_and_31_days(self):
+        for period, expected in [('2028-02', 29), ('2027-02', 28), ('2026-10', 31)]:
+            invoice = sample_invoice()
+            invoice['period'] = period
+            self.assertEqual(len(pdf.daily_usage(invoice)), expected)
+
+    def test_chart_legacy_snapshot_has_no_fabricated_daily_usage(self):
+        rows = pdf.daily_usage(sample_invoice())
+        self.assertTrue(all(row['kwh'] is None for row in rows))
+
+    def test_chart_invalid_values_are_not_zero(self):
+        invoice = sample_invoice()
+        invoice['days'] = {f'2026-09-0{i}': {'kwh': value}
+                           for i, value in enumerate(['NaN', '-1', 'unknown', None], 1)}
+        self.assertTrue(all(row['kwh'] is None for row in pdf.daily_usage(invoice)))
+
+    def test_chart_first_record_is_partial_for_partial_invoice(self):
+        invoice = self.detailed_invoice()
+        invoice['partial'] = True
+        rows = pdf.daily_usage(invoice)
+        self.assertTrue(rows[0]['partial'])
+        self.assertFalse(rows[1]['partial'])
+
     def detailed_invoice(self):
         invoice = sample_invoice()
         invoice['days'] = {}

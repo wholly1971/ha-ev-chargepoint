@@ -15,7 +15,7 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.4.4.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.4.5.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
@@ -337,3 +337,9 @@ In Configure, tick **Default rate includes GST** or **Monthly fixed fee includes
 Set **GST / tax percentage** to the applicable positive percentage (normally 10 for Australian GST) before selecting an inclusive amount. At 10%, AUD 110 including GST contains AUD 100 net plus AUD 10 GST; the billed total stays AUD 110. An unticked amount is exclusive and has the configured GST added. Mixed inclusive/exclusive rates and fees can appear on the same invoice. The checkboxes default off for existing manual prices; no existing price is assumed inclusive.
 
 All four invoice layouts show net line amounts, subtotal, **GST included in total**, and the final total. Included GST is extracted for disclosure, not added again. A GST breakdown records the percentages used. Recorded energy preserves its earlier GST percentage when settings change mid-month; older unissued ledgers retain their previous stored tax treatment when future metering resumes. The monthly fee remains a once-per-month amount using the period's final settings. Existing issued invoices are unchanged. Unit prices are displayed to six decimals; money remains Decimal-based and is rounded to cents. No tax setting is enabled automatically.
+
+### Daily usage chart on PDF invoices (0.4.5)
+
+Every newly generated PDF includes a **Daily usage** comparison page, regardless of Invoice Billing Options. One bar per calendar day shows recorded billable kWh across all tariffs, with day numbers and weekdays. The page also shows the recorded daily total, highest recorded day, and average over days with readings.
+
+Orange marks incomplete days. A measured zero is labelled 0; a grey x means no saved daily record. Missing history is not estimated or counted as zero. Older snapshots without daily evidence show an unavailable message. The chart uses the issued invoice's saved daily buckets, so later sensor history changes cannot rewrite it. It does not change invoice amounts, GST, billing scope, schedule controls or delivery behavior. Existing saved PDF files and submitted invoices are not overwritten or resent during an update.

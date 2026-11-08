@@ -7,6 +7,7 @@ import re
 
 from .billing import decimal, money, invoice_items, INVOICE_LAYOUT_LABELS, net_amount
 from .branding import logo_bytes
+from .invoice_usage import daily_usage, usage_chart
 
 
 def invoice_filename(invoice):
@@ -41,7 +42,7 @@ def _render_pdf(invoice, *, sample=False):
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import (
-        Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
     )
 
     # Font files ship with ReportLab; no OS fonts or downloads are required.
@@ -120,6 +121,26 @@ def _render_pdf(invoice, *, sample=False):
     if notes:
         story += [Spacer(1, 12), p("BILLING NOTES", label), p("\n".join(notes), small)]
     story += [Spacer(1, 30), KeepTogether([p("PAYMENT DETAILS & TERMS", label), Spacer(1, 7), p(config.get("payment_instructions") or "Payment instructions have not been configured.")])]
+
+    rows = daily_usage(invoice)
+    known = [row for row in rows if row['kwh'] is not None]
+    daily_total = sum((row['kwh'] for row in known), decimal(0))
+    peak = max((row['kwh'] for row in known), default=decimal(0))
+    average = daily_total / len(known) if known else None
+    story += [PageBreak(), p('DAILY USAGE', heading), Spacer(1, 10),
+              p(f"Invoice {invoice['number']} | Billing month {invoice['period']}", small), Spacer(1, 26),
+              usage_chart(rows, width), Spacer(1, 26)]
+    if known:
+        story += [p(f"Recorded daily total: {daily_total:.3f} kWh | Highest recorded day: {peak:.3f} kWh", body),
+                  Spacer(1, 8), p(f"Average per recorded day: {average:.3f} kWh | Days with readings: {len(known)} of {len(rows)}", body)]
+    else:
+        story += [p('Daily usage unavailable for this invoice. No daily records were saved in its snapshot.', body)]
+    story += [Spacer(1, 20), p('HOW TO READ THIS CHART', label), Spacer(1, 7),
+              p('Each bar shows the recorded billable EV energy for that calendar day, combining all tariffs. Orange bars mark incomplete days and can understate actual usage. A measured zero is labelled 0; a grey x means no daily record, not zero usage. The average includes only days with readings, including incomplete days.', small),
+              Spacer(1, 10), p('Daily values come from this issued invoice snapshot. Missing or older daily history is never estimated. This comparison does not change charges, GST or the amount payable.', small)]
+    invoice_energy = decimal(invoice.get('kwh', sum((decimal(value) for value in invoice['lines'].values()), decimal(0))))
+    if abs(invoice_energy - daily_total) > decimal('0.000001'):
+        story += [Spacer(1, 12), p(f"Invoice energy: {invoice_energy:.3f} kWh. The chart covers only the {daily_total:.3f} kWh with saved daily detail; it may not cover all energy on the invoice.", small)]
 
     def footer(canvas, document):
         canvas.setStrokeColor(coral)
