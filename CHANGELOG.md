@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1 - 2026-11-11
+
+- Describe weekly billing consistently as Monday to Sunday in configuration, the portal and newly rendered invoice periods. Keep the next-week midnight boundary exclusive internally.
+- Verify the final Sunday second, consecutive weeks without overlap, tariff/GST totals, cross-month fee proration and daylight-saving weeks with billing regression tests. No accounting records or delivery states are rewritten.
+
 ## 0.5.0 - 2026-11-11
 
 - Add each-charge, daily, weekly and monthly invoice periods with corresponding automatic PDF email delivery. Monthly remains the existing default.
