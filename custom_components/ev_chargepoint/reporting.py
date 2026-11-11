@@ -25,6 +25,10 @@ def ledger_summary(ledger):
                 key: invoice[key]
                 for key in ("number", "period", "issued_at", "kwh", "total", "partial")
             } | {"currency": invoice["settings"]["currency"], "tariffs": invoice.get("tariffs", {})}
+              | {key: invoice[key] for key in ("period_start", "period_end", "billing_period") if key in invoice}
             for period, invoice in data["invoices"].items()
         },
+        "billing_cycles": {key: {field: bucket[field] for field in
+                            ("start", "end", "mode", "closed", "kwh", "gap_seconds", "partial")}
+                           for key, bucket in data.get("cycles", {}).items()},
     }

@@ -305,6 +305,24 @@ class HomeAssistantInterfaceTests(unittest.TestCase):
         result = asyncio.run(flow.async_step_invoice_billing({"invoice_billing_option": "invalid"}))
         self.assertEqual(result["errors"], {"invoice_billing_option": "invalid_invoice_option"})
 
+    def test_billing_period_selection_and_session_fee_validation(self):
+        import asyncio
+        from custom_components.ev_chargepoint.config_flow import EVBillingOptionsFlow
+        from custom_components.ev_chargepoint.const import DEFAULTS
+        for period in ('each_charge', 'daily', 'weekly', 'monthly'):
+            flow = EVBillingOptionsFlow()
+            flow._entry_id = 'existing'
+            flow._values = dict(DEFAULTS)
+            result = asyncio.run(flow.async_step_invoice_billing({
+                'invoice_billing_option': 'itemised', 'billing_period': period}))
+            self.assertEqual(result['data']['billing_period'], period)
+        flow = EVBillingOptionsFlow()
+        flow._entry_id = 'existing'
+        flow._values = {**DEFAULTS, 'fixed_fee': '10'}
+        result = asyncio.run(flow.async_step_invoice_billing({
+            'invoice_billing_option': 'itemised', 'billing_period': 'each_charge'}))
+        self.assertEqual(result['errors'], {'billing_period': 'session_fixed_fee'})
+
     def test_no_email_flow_still_configures_invoice_presentation(self):
         import asyncio
         from types import SimpleNamespace

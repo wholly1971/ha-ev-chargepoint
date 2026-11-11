@@ -28,6 +28,9 @@ DEFAULTS = {
     "smtp_sender": "",
     "customer_email": "",
     "invoice_billing_option": "itemised",
+    "billing_period": "monthly",
+    "session_power_threshold": 100,
+    "session_idle_minutes": 5,
 }
 
 INVOICE_BILLING_OPTIONS = ("itemised", "daily", "monthly_tariffs", "monthly_total")

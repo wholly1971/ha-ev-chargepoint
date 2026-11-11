@@ -123,6 +123,35 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.mail.assert_called_once()
         self.assertEqual(self.runtime.ledger.data["delivery"]["2026-01"], "submitted")
 
+    async def test_daily_pdf_sent_once_without_second_monthly_invoice(self):
+        from datetime import timedelta
+        from decimal import Decimal
+        ledger = self.runtime.ledger
+        ledger.data['months'] = {}
+        config = {**self.runtime.config, 'billing_period': 'daily', 'billing_scope': 'all_time'}
+        self.runtime.config = config
+        start = NOW - timedelta(hours=1)
+        ledger.advance(start, Decimal('1000'), config, timezone.utc)
+        ledger.advance(NOW, Decimal('0'), config, timezone.utc)
+        await self.runtime._invoice_completed(NOW)
+        await self.runtime._invoice_completed(NOW)
+        self.mail.assert_called_once()
+        self.assertNotIn('2026-01', ledger.data['invoices'])
+        self.assertEqual(next(iter(ledger.data['delivery'].values())), 'submitted')
+
+    async def test_daily_pdf_failure_withholds_email(self):
+        from datetime import timedelta
+        from decimal import Decimal
+        ledger = self.runtime.ledger
+        ledger.data['months'] = {}
+        self.runtime.config.update(billing_period='daily', billing_scope='all_time')
+        ledger.advance(NOW - timedelta(hours=1), Decimal('1000'), self.runtime.config, timezone.utc)
+        ledger.advance(NOW, Decimal('0'), self.runtime.config, timezone.utc)
+        self.runtime._write_invoice = Mock(side_effect=ValueError('PDF failed'))
+        await self.runtime._invoice_completed(NOW)
+        self.mail.assert_not_called()
+        self.assertEqual(next(iter(ledger.data['delivery'].values())), 'pending')
+
     async def test_save_failure_withholds_email_and_keeps_snapshot_pending(self):
         self.runtime._write_invoice = Mock(side_effect=ValueError('PDF failed'))
         await self.runtime._invoice_completed(NOW)

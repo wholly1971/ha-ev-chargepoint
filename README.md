@@ -15,7 +15,7 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.4.5.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.5.0.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
@@ -126,27 +126,20 @@ finite and nonnegative. Outages, stale readings, and Home Assistant downtime
 become gaps, not invented usage. No historical backfill is attempted. A complete
 Home Assistant outage can also prevent scheduled switch control.
 
-## Monthly invoices
+## Invoices and billing periods
 
-Billing periods are calendar months in Home Assistant's local timezone. The
-first sample after the month ends creates the invoice. The starting month is
-always marked partial. Invoices for incomplete months are withheld until you
-press **Approve all incomplete completed months**. This issues every withheld
-completed month using only recorded usage, so review the status sensor first.
-If automatic email is enabled, approval also sends those invoices.
+Monthly billing is the existing default. In **Invoice Billing Options** or the
+portal's **Billing period** selector choose each charge, daily, weekly or monthly.
+The first sample after a completed period closes creates its invoice. Incomplete
+readings require **Approve all incomplete completed billing periods**; approval
+can also send the bills when automatic email is enabled. Review the status first.
 
-Three entities show monthly billable kWh, monthly charge including fee/tax,
-and billing status. The status attributes show missing-data seconds by month
-and invoice email states. Fees apply once per tracked month; no proration.
-Periods entirely outside the billable window are not created. Months with
-missing data need approval even if measured consumption is zero.
-
-Invoices contain a stable identifier, monthly period, seller/customer details,
-kWh grouped by tariff, fee, subtotal, tax, total, and payment instructions.
-Tariff changes apply to future measured intervals. The fixed fee, currency and customer details use the last configuration recorded in that month; GST on newly measured energy is recorded prospectively at its then-configured percentage;
-currency changes within a month are not supported. Issued invoices retain their
-snapshot and are never recalculated. To change the customer or currency, create
-a new instance with a different sensor after retiring the old instance.
+Monthly energy/cost sensors remain monthly reporting totals for every cadence.
+Invoices preserve their own tariff, rate, GST and daily evidence, and never
+recalculate after issue. Calendar fixed fees are prorated after opting into a
+non-monthly period. Existing monthly-only installations retain their established
+once-per-month fee behavior until switching cadence. Currency changes remain
+unsupported on an existing entry.
 
 Printable HTML invoices and matching PDFs are saved under:
 
@@ -315,7 +308,7 @@ Issued invoices are rendered as A4 PDFs with the EV ChargePoint logo, navy invoi
 
 Every invoice email now attaches the PDF for Gmail app passwords, custom SMTP and connected Google Mail. Connected Google Mail PDF delivery uses the Home Assistant 2026.10 account runtime client because the native notification action supports HTML only; a missing client causes an explicit failure requiring review/retry. The existing recipient snapshot and uncertain-send safeguards remain in effect. Test email remains a simple marked connectivity test and does not issue or attach a customer invoice.
 
-PDF and HTML files stay in the private invoice folder, outside `www`. Existing issued accounting snapshots and existing HTML files are preserved; missing PDFs are generated from their saved snapshots. An update does not resend submitted invoices or approve incomplete periods. ReportLab 4.4.9 is installed automatically as an integration dependency. Future monthly invoice emails use the new PDF automatically when automatic delivery is enabled.
+PDF and HTML files stay in the private invoice folder, outside `www`. Existing issued accounting snapshots and existing HTML files are preserved; missing PDFs are generated from their saved snapshots. An update does not resend submitted invoices or approve incomplete periods. ReportLab 4.4.9 is installed automatically as an integration dependency. Future invoice emails use the new PDF automatically when automatic delivery is enabled.
 
 ### Invoice Billing Options (0.4.3)
 
@@ -323,12 +316,12 @@ Open **Settings > Devices & services > EV ChargePoint > Configure**. Submit the 
 
 - **Itemised individual tariff charging (default)**: each calendar day's recorded tariff/rate rows; rate changes stay separate. These are measured energy lines, not inferred vehicle sessions.
 - **Combined tariffs - total daily charge**: one combined energy row per recorded day.
-- **Monthly tariff totals**: one energy row per tariff across the month, combining recorded rates without claiming they were a single unit rate.
-- **Monthly total**: one combined energy row for the month.
+- **Tariff totals for the billing period**: one energy row per tariff across the selected period, combining recorded rates without claiming they were a single unit rate.
+- **One total for the billing period**: one combined energy row for the selected period.
 
-Every choice uses the same monthly billing period and the same recorded energy costs, monthly fee, tax and grand total. Combined rows show a dash for the unit rate. The option changes presentation only; it does not change tariff schedules, charging controls or when email is sent. Fees and tax are shown separately. Daily layouts preserve older usage without daily evidence as a labelled summary instead of guessing dates.
+Every layout choice uses the selected billing period and the same recorded energy costs, applicable fixed fee, tax and grand total. Combined rows show a dash for the unit rate. The option changes presentation only; it does not change tariff schedules, charging controls or when email is sent. Fees and tax are shown separately. Daily layouts preserve older usage without daily evidence as a labelled summary instead of guessing dates.
 
-The branded A4 invoice is the default PDF for every choice. Seller/customer details and payment terms come from Configure. When automatic monthly email is enabled, Gmail/SMTP sends the selected invoice layout as a PDF attachment. The matching text/HTML body uses the same grouping. No extra PDF toggle is needed and saving options sends no email. Local-only users can choose the layout too. The selected layout and available daily evidence are copied into newly issued invoice snapshots; existing issued invoices and their delivery state are unchanged.
+The branded A4 invoice is the default PDF for every choice. Seller/customer details and payment terms come from Configure. When automatic invoice email is enabled, Gmail/SMTP sends the selected invoice layout as a PDF attachment. The matching text/HTML body uses the same grouping. No extra PDF toggle is needed and saving options sends no email. Local-only users can choose the layout too. The selected layout and available daily evidence are copied into newly issued invoice snapshots; existing issued invoices and their delivery state are unchanged.
 
 ### GST-inclusive amounts (0.4.4)
 
@@ -343,3 +336,44 @@ All four invoice layouts show net line amounts, subtotal, **GST included in tota
 Every newly generated PDF includes a **Daily usage** comparison page, regardless of Invoice Billing Options. One bar per calendar day shows recorded billable kWh across all tariffs, with day numbers and weekdays. The page also shows the recorded daily total, highest recorded day, and average over days with readings.
 
 Orange marks incomplete days. A measured zero is labelled 0; a grey x means no saved daily record. Missing history is not estimated or counted as zero. Older snapshots without daily evidence show an unavailable message. The chart uses the issued invoice's saved daily buckets, so later sensor history changes cannot rewrite it. It does not change invoice amounts, GST, billing scope, schedule controls or delivery behavior. Existing saved PDF files and submitted invoices are not overwritten or resent during an update.
+
+
+## Billing periods and invoice emails (0.5.0)
+
+Choose **Each charge**, **Daily**, **Weekly** or **Monthly** using the device's
+**Billing period** selector or **Configure > Invoice Billing Options**. The portal
+exposes the same selector. Automatic email uses this period and sends the branded
+PDF after it closes, normally at the next 30-second tick. Monthly remains the
+existing default; installing the update does not change your selected period.
+
+- Daily: local midnight to midnight.
+- Weekly: Monday midnight to the following Monday; a week may cross a month.
+- Monthly: calendar month, in Home Assistant's configured timezone.
+- Each charge: measured power at or above the configurable threshold (default
+  100 W) starts a charge. Power below it continuously for the configured idle delay
+  (default 5 minutes) closes it. Brief pauses remain one charge. Unknown/stale
+  readings are never treated as a successful charge end. Standby consumption below
+  the threshold between sessions is not included in per-charge invoices.
+
+Tariff rates, GST flags, invoice grouping and the daily usage graph apply to every
+period. The older layout option names `monthly_tariffs` and `monthly_total` now
+mean tariff totals / combined total **for the selected billing period**. Monthly
+energy/cost dashboard sensors remain reporting totals; changing email frequency
+does not change charger schedules or manual charging controls.
+
+When changing period, the unbilled remainder is closed at the recorded cutover;
+subsequent usage belongs only to the new period. Existing issued invoices and
+submitted email states are preserved. Older incomplete readings still require
+explicit approval; the update never approves them. Empty periods without a fixed
+fee do not create invoices. Calendar fixed fees accrue proportionally by actual
+time in each local month, including DST. Each-charge billing requires a zero
+monthly fixed fee; choose calendar billing if a recurring monthly fee is needed.
+Rounding applies to each issued bill, so summed small-period cents can differ from
+one monthly-rounded bill. Period and fee changes apply prospectively.
+
+Invoice files stay private under `ev_chargepoint_invoices/<entry-id>/`; attachment
+filenames and invoice numbers identify the billing cycle. Delivery uncertainty
+still requires manual retry to avoid duplicate email. An email server accepting a
+message is not proof of inbox delivery.
+
+The portal resource source is in `dashboard/chargeport-operations-card.js`; update the existing custom card resource with this source and refresh the browser. It discovers the Billing period entity from the billing-status sensor attributes, without hardcoded entity names.

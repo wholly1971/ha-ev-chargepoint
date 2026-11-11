@@ -1,13 +1,14 @@
 """Pure billing rules. No Home Assistant dependency or floating point money."""
 
 from datetime import datetime, timedelta, timezone
+from calendar import monthrange
 from decimal import Decimal, ROUND_HALF_UP
 from copy import deepcopy
 from html import escape
 
 ZERO = Decimal("0")
 INVOICE_LAYOUT_LABELS = {"itemised": "Itemised tariff charging", "daily": "Combined daily charges",
-                         "monthly_tariffs": "Monthly tariff totals", "monthly_total": "Monthly total"}
+                         "monthly_tariffs": "Tariff totals for billing period", "monthly_total": "Billing period total"}
 
 
 def billing_settings(config):
@@ -50,7 +51,11 @@ def tax_summary(bucket):
     config = bucket["settings"]
     bases = {rate: decimal(value) for rate, value in tax_bases(bucket).items()}
     rate = f"{decimal(config['tax_percent']).normalize():f}"
-    bases[rate] = bases.get(rate, ZERO) + net_amount(config, "fixed_fee")
+    if "fee_tax_bases" in bucket:
+        for fee_rate, value in bucket["fee_tax_bases"].items():
+            bases[fee_rate] = bases.get(fee_rate, ZERO) + decimal(value)
+    else:
+        bases[rate] = bases.get(rate, ZERO) + net_amount(config, "fixed_fee")
     return {rate: money(value * decimal(rate) / 100) for rate, value in bases.items() if value}
 
 
@@ -110,6 +115,7 @@ class Ledger:
     def advance(self, now, watts, config, zone, valid_previous=True):
         previous = self.data["cursor"]
         now = now.astimezone(timezone.utc)
+        self._prepare_cycles(now, config, zone)
         if previous:
             cursor = datetime.fromisoformat(previous).astimezone(timezone.utc)
             if now <= cursor:
@@ -120,6 +126,8 @@ class Ledger:
                 boundary = cursor.replace(second=0, microsecond=0) + timedelta(minutes=1)
                 stop = min(now, boundary)
                 local = cursor.astimezone(zone)
+                if "cycles" in self.data:
+                    self._cycle_interval(cursor, stop, config, zone, valid_previous)
                 if config.get("billing_scope") == "all_time" or in_window(local, config):
                     period = local.strftime("%Y-%m")
                     bucket = self.data["months"].setdefault(
@@ -171,6 +179,148 @@ class Ledger:
             }
         self.data["cursor"] = now.isoformat()
         self.watts = watts
+
+    def _prepare_cycles(self, now, config, zone):
+        """Opt in prospectively; preserve the unbilled monthly remainder once."""
+        mode = config.get("billing_period", "monthly")
+        if "cycles" not in self.data and mode == "monthly":
+            return
+        if "cycles" not in self.data:
+            start = datetime.fromisoformat(self.data["cursor"]) if self.data["cursor"] else now
+            month = start.astimezone(zone).strftime("%Y-%m")
+            self.data.update(cycles={}, active_cycle=None, cycle_mode=mode, cycle_cutover_month=month)
+            old = self.data["months"].get(month)
+            if old and month not in self.data["invoices"]:
+                key = "transition-" + month
+                bucket = deepcopy(old)
+                bucket.update(start=start.astimezone(zone).replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat(),
+                              end=start.astimezone(zone).isoformat(), closed=True, mode="monthly", days=deepcopy({
+                                  day: value for day, value in self.data["days"].items() if day.startswith(month + "-")}))
+                # Monthly fee accrued to the cutover only, not a second full fee.
+                elapsed = decimal((start - datetime.fromisoformat(bucket["start"])).total_seconds())
+                bucket["settings"]["fixed_fee"] = str(net_amount(old["settings"], "fixed_fee") * elapsed / self._month_seconds(start, zone))
+                bucket["settings"]["fixed_fee_includes_gst"] = False
+                self.data["cycles"][key] = bucket
+        if mode != self.data["cycle_mode"]:
+            key = self.data["active_cycle"]
+            if key:
+                self.data["cycles"][key]["closed"] = True
+                self.data["cycles"][key]["end"] = (datetime.fromisoformat(self.data["cursor"]) if self.data["cursor"] else now).astimezone(zone).isoformat()
+            self.data.update(active_cycle=None, cycle_mode=mode)
+
+    @staticmethod
+    def _month_seconds(now, zone):
+        local = now.astimezone(zone)
+        start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        return decimal((end.astimezone(timezone.utc) - start.astimezone(timezone.utc)).total_seconds())
+
+    @staticmethod
+    def _calendar_cycle(now, mode, zone):
+        local = now.astimezone(zone)
+        start = local.replace(hour=0, minute=0, second=0, microsecond=0)
+        if mode == "weekly":
+            start -= timedelta(days=start.weekday())
+            end = start + timedelta(days=7)
+        elif mode == "monthly":
+            start = start.replace(day=1)
+            end = start + timedelta(days=monthrange(start.year, start.month)[1])
+        else:
+            end = start + timedelta(days=1)
+        return start, end
+
+    def _new_cycle(self, start, end, config, mode, partial=False):
+        key = mode + "-" + start.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        self.data["cycles"][key] = {
+            "start": start.isoformat(), "end": end.isoformat(), "closed": False, "mode": mode,
+            "kwh": "0", "lines": {}, "tax_bases": {}, "fee_tax_bases": {}, "fee_net": "0",
+            "gap_seconds": 0, "partial": partial, "settings": billing_settings(config), "days": {},
+        }
+        self.data["active_cycle"] = key
+        return key
+
+    def _cycle_interval(self, start, stop, config, zone, valid):
+        mode = self.data["cycle_mode"]
+        key = self.data["active_cycle"]
+        bucket = self.data["cycles"].get(key)
+        if mode != "each_charge":
+            _, end = self._calendar_cycle(start, mode, zone)
+            if bucket and start >= datetime.fromisoformat(bucket["end"]):
+                bucket["closed"] = True
+                bucket = None
+            if bucket is None:
+                key = self._new_cycle(start.astimezone(zone), end, config, mode, False)
+                bucket = self.data["cycles"][key]
+        else:
+            active = valid and self.watts is not None and self.watts >= decimal(config.get("session_power_threshold", 100))
+            if bucket is None:
+                if not active:
+                    return
+                key = self._new_cycle(start.astimezone(zone), stop.astimezone(zone), config, mode, False)
+                bucket = self.data["cycles"][key]
+            if active:
+                bucket.pop("idle_since", None)
+            elif valid and self.watts is not None:
+                bucket.setdefault("idle_since", start.isoformat())
+            else:
+                # Unknown power is not proof of a completed charge.
+                bucket.pop("idle_since", None)
+            bucket["end"] = stop.astimezone(zone).isoformat()
+        seconds = decimal((stop - start).total_seconds())
+        local = start.astimezone(zone)
+        daily = bucket["days"].setdefault(local.strftime("%Y-%m-%d"), {"kwh": "0", "energy_cost": "0", "gap_seconds": 0})
+        allowed = config.get("billing_scope") == "all_time" or in_window(local, config)
+        if allowed:
+            if self.watts is None or not valid:
+                bucket["gap_seconds"] += float(seconds)
+                daily["gap_seconds"] += float(seconds)
+            else:
+                energy = self.watts * seconds / Decimal("3600000")
+                band, name, rate, source = tariff_at(local, config)
+                cost = energy * decimal(rate)
+                bucket["kwh"] = str(decimal(bucket["kwh"]) + energy)
+                bucket["lines"][rate] = str(decimal(bucket["lines"].get(rate, 0)) + energy)
+                daily["kwh"] = str(decimal(daily["kwh"]) + energy)
+                daily["energy_cost"] = str(decimal(daily["energy_cost"]) + cost)
+                tax = f"{decimal(config['tax_percent']).normalize():f}"
+                bucket["tax_bases"][tax] = str(decimal(bucket["tax_bases"].get(tax, 0)) + cost)
+                for target in (bucket, daily):
+                    add_tariff(target, band, name, rate, energy, source, not in_window(local, config))
+        if mode != "each_charge":
+            fee = net_amount(config, "fixed_fee") * seconds / self._month_seconds(start, zone)
+            bucket["fee_net"] = str(decimal(bucket["fee_net"]) + fee)
+            tax = f"{decimal(config['tax_percent']).normalize():f}"
+            bucket["fee_tax_bases"][tax] = str(decimal(bucket["fee_tax_bases"].get(tax, 0)) + fee)
+        bucket["settings"] = billing_settings(config)
+        bucket["settings"].update(fixed_fee=bucket["fee_net"], fixed_fee_includes_gst=False)
+        if mode == "each_charge":
+            idle = bucket.get("idle_since")
+            finished = idle and (stop - datetime.fromisoformat(idle)).total_seconds() >= config.get("session_idle_minutes", 5) * 60
+        else:
+            finished = stop >= datetime.fromisoformat(bucket["end"])
+        if finished:
+            bucket["closed"] = True
+            self.data["active_cycle"] = None
+
+    def issue_cycle(self, key, entry_id, now, approve=False, *, invoice_billing_option="itemised"):
+        """Reuse immutable invoice/delivery rules for a closed non-overlapping cycle."""
+        if key in self.data["invoices"]:
+            return self.data["invoices"][key]
+        bucket = self.data["cycles"][key]
+        if not bucket["closed"]:
+            raise ValueError("Billing period is still open")
+        if not decimal(bucket["kwh"]) and not net_amount(bucket["settings"], "fixed_fee"):
+            return None
+        # Existing accounting and coverage checks apply to every cadence.
+        temporary = Ledger({"cursor": None, "months": {"0000-00": bucket}, "invoices": {},
+                            "delivery": {}, "days": {}})
+        invoice = temporary.issue("0000-00", "9999-99", entry_id, now, approve,
+                                  invoice_billing_option=invoice_billing_option)
+        invoice.update(number=f"EV-{entry_id}-{key}", period=key, billing_period=bucket["mode"],
+                       period_start=bucket["start"], period_end=bucket["end"], days=deepcopy(bucket["days"]))
+        self.data["invoices"][key] = invoice
+        self.data["delivery"][key] = "pending"
+        return invoice
 
     def totals(self, period):
         bucket = self.data["months"][period]
@@ -247,7 +397,7 @@ def invoice_items(invoice):
     quantity = sum((row["quantity"] for row in monthly), ZERO)
     amount = sum((row["amount"] for row in monthly), ZERO)
     if mode == "monthly_total":
-        return [{"description": "Monthly EV charging - " + invoice["period"],
+        return [{"description": "EV charging - " + period_label(invoice),
                  "quantity": quantity, "rate": None, "amount": amount}]
     if mode == "monthly_tariffs":
         groups = {}
@@ -258,7 +408,7 @@ def invoice_items(invoice):
             group["amount"] += row["amount"]
         return list(groups.values())
     days = {day: value for day, value in invoice.get("days", {}).items()
-            if day.startswith(invoice["period"] + "-")}
+            if invoice.get("period_start") or day.startswith(invoice["period"] + "-")}
     if not days:
         # Old snapshots have monthly evidence only. Never infer dates/sessions.
         return monthly if mode != "daily" else [{"description": "Recorded charging without daily detail",
@@ -292,13 +442,21 @@ def invoice_items(invoice):
     return rows
 
 
+def period_label(invoice):
+    if invoice.get("period_start"):
+        start = datetime.fromisoformat(invoice['period_start'])
+        end = datetime.fromisoformat(invoice['period_end'])
+        return f"{start:%d %b %Y %H:%M %z} to {end:%d %b %Y %H:%M %z} (end exclusive)"
+    return invoice["period"]
+
+
 def invoice_text(invoice):
     config = invoice["settings"]
     lines = [
         "EV CHARGEPOINT INVOICE",
         invoice["number"],
         f"Issued: {invoice['issued_at']}",
-        f"Billing month: {invoice['period']}",
+        f"Billing period: {period_label(invoice)}",
         f"Seller: {config['seller']}",
         f"Customer: {config['customer']}",
         f"Invoice layout: {INVOICE_LAYOUT_LABELS.get(config.get('invoice_billing_option', 'itemised'), 'Itemised tariff charging')}",
@@ -317,7 +475,7 @@ def invoice_text(invoice):
             lines.append(f"Legacy recorded energy: {item['quantity']:.6f} kWh (included above; original rate retained)")
     lines.extend(
         [
-            f"Monthly fee (excluding GST): {money(net_amount(config, 'fixed_fee'))}",
+            f"Fixed fee (excluding GST): {money(net_amount(config, 'fixed_fee'))}",
             f"Subtotal: {invoice['subtotal']}",
             f"GST included in total: {invoice['tax']}",
             f"TOTAL: {invoice['total']} {config['currency']}",

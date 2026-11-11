@@ -5,7 +5,7 @@ from io import BytesIO
 from pathlib import Path
 import re
 
-from .billing import decimal, money, invoice_items, INVOICE_LAYOUT_LABELS, net_amount
+from .billing import decimal, money, invoice_items, INVOICE_LAYOUT_LABELS, net_amount, period_label
 from .branding import logo_bytes
 from .invoice_usage import daily_usage, usage_chart
 
@@ -81,7 +81,7 @@ def _render_pdf(invoice, *, sample=False):
         [p("FROM", label), p("BILL TO", label), p("INVOICE DETAILS", label)],
         [p(config.get("seller") or "Seller details not configured"),
          p(config.get("customer") or "Customer details not configured"),
-         p(f"Invoice: {invoice['number']}\nIssued: {invoice['issued_at'][:10]}\nBilling period: {invoice['period']}\nCurrency: {currency}\nLayout: {INVOICE_LAYOUT_LABELS.get(config.get('invoice_billing_option', 'itemised'), 'Itemised tariff charging')}", small)],
+         p(f"Invoice: {invoice['number']}\nIssued: {invoice['issued_at'][:10]}\nBilling period: {period_label(invoice)}\nCurrency: {currency}\nLayout: {INVOICE_LAYOUT_LABELS.get(config.get('invoice_billing_option', 'itemised'), 'Itemised tariff charging')}", small)],
     ], colWidths=[width * .33, width * .33, width * .34])
     meta.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 12), ("BOTTOMPADDING", (0, 0), (-1, -1), 7)]))
     story += [meta, Spacer(1, 24)]
@@ -96,7 +96,7 @@ def _render_pdf(invoice, *, sample=False):
             rate_text += "0"
         data.append([p(f"{quantity:.6f}", right), p(name), p(rate_text, right), p(money(amount), right)])
     if net_amount(config, "fixed_fee"):
-        data.append([p("1", right), p("Monthly fixed fee"), p(money(net_amount(config, "fixed_fee")), right), p(money(net_amount(config, "fixed_fee")), right)])
+        data.append([p("1", right), p("Fixed fee (prorated)" if invoice.get("period_start") else "Monthly fixed fee"), p(money(net_amount(config, "fixed_fee")), right), p(money(net_amount(config, "fixed_fee")), right)])
     if len(data) == 1:
         data.append([p("0", right), p("No recorded billable charging"), p("-", right), p("0.00", right)])
     table = Table(data, colWidths=[73, width - 270, 97, 100], repeatRows=1, hAlign="LEFT")
@@ -107,7 +107,7 @@ def _render_pdf(invoice, *, sample=False):
                     [p(f"TOTAL {currency}", label), p(f"{currency} {invoice['total']}", ParagraphStyle("EVTotal", parent=right, fontName="EVSansBold", fontSize=15, leading=20))]],
                    colWidths=[170, 125], hAlign="RIGHT")
     totals.setStyle(TableStyle([("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7), ("LINEABOVE", (0, 2), (-1, 2), 1, coral), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-    story += [totals, Spacer(1, 16), p("Prices shown exclude GST. GST-inclusive inputs have their GST extracted once. A dash in Unit rate means combined recorded rates. Totals use unrounded recorded energy; displayed rates use up to six decimals and amounts are rounded to two decimals.", small)]
+    story += [totals, Spacer(1, 16), KeepTogether([p("Prices shown exclude GST. GST-inclusive inputs have their GST extracted once. A dash in Unit rate means combined recorded rates. Totals use unrounded recorded energy; displayed rates use up to six decimals and amounts are rounded to two decimals.", small)])]
     notes = []
     if invoice.get("tax_breakdown"):
         notes.append("GST breakdown: " + "; ".join(f"{rate}%: {currency} {amount}" for rate, amount in invoice["tax_breakdown"].items()))
@@ -128,7 +128,7 @@ def _render_pdf(invoice, *, sample=False):
     peak = max((row['kwh'] for row in known), default=decimal(0))
     average = daily_total / len(known) if known else None
     story += [PageBreak(), p('DAILY USAGE', heading), Spacer(1, 10),
-              p(f"Invoice {invoice['number']} | Billing month {invoice['period']}", small), Spacer(1, 26),
+              p(f"Invoice {invoice['number']} | Billing period {period_label(invoice)}", small), Spacer(1, 26),
               usage_chart(rows, width), Spacer(1, 26)]
     if known:
         story += [p(f"Recorded daily total: {daily_total:.3f} kWh | Highest recorded day: {peak:.3f} kWh", body),

@@ -54,7 +54,9 @@ class BillingSensor(CoordinatorEntity, SensorEntity):
             return round(float(bucket["kwh"]), 6) if bucket else 0
         if self.kind == "cost":
             return ledger.totals(period)[2] if bucket else "0.00"
-        if any(p < period and p not in ledger.data["invoices"] for p in ledger.data["months"]):
+        if any(p < period and p < ledger.data.get("cycle_cutover_month", "9999-99") and p not in ledger.data["invoices"] for p in ledger.data["months"]) or any(
+            bucket["closed"] and key not in ledger.data["invoices"] and (bucket["gap_seconds"] or bucket["partial"]) and float(bucket["kwh"]) > 0
+            for key, bucket in ledger.data.get("cycles", {}).items()):
             return "review_required"
         if self.coordinator.config.get("smtp_provider") != "none" and any(
             status in ("failed", "sending") for status in ledger.data["delivery"].values()
@@ -73,6 +75,8 @@ class BillingSensor(CoordinatorEntity, SensorEntity):
             "email_test": dict(self.coordinator.email_test),
             "email_provider": self.coordinator.config.get("smtp_provider", "none"),
             "automatic_email": self.coordinator.config.get("auto_email", False),
+            "billing_period": self.coordinator.config.get("billing_period", "monthly"),
+            "billing_period_entity_id": self.coordinator.billing_period_entity_id,
             "invoice_rate": str(net_amount(self.coordinator.config, "rate")),
             "entered_default_rate": self.coordinator.config["rate"],
             "rate_includes_gst": self.coordinator.config.get("rate_includes_gst", False),
