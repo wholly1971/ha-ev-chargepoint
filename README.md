@@ -15,7 +15,7 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.5.0.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.5.1.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
@@ -347,7 +347,7 @@ PDF after it closes, normally at the next 30-second tick. Monthly remains the
 existing default; installing the update does not change your selected period.
 
 - Daily: local midnight to midnight.
-- Weekly: Monday midnight to the following Monday; a week may cross a month.
+- Weekly: Monday to Sunday, including all Sunday usage. The period closes at Sunday midnight (the start of the next week), and the PDF email follows when readings are complete. Weeks may cross a month; Home Assistant local time applies.
 - Monthly: calendar month, in Home Assistant's configured timezone.
 - Each charge: measured power at or above the configurable threshold (default
   100 W) starts a charge. Power below it continuously for the configured idle delay

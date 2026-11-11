@@ -220,6 +220,7 @@ class Ledger:
         local = now.astimezone(zone)
         start = local.replace(hour=0, minute=0, second=0, microsecond=0)
         if mode == "weekly":
+            # Monday through all of Sunday; next Monday is an exclusive bound.
             start -= timedelta(days=start.weekday())
             end = start + timedelta(days=7)
         elif mode == "monthly":
@@ -446,6 +447,9 @@ def period_label(invoice):
     if invoice.get("period_start"):
         start = datetime.fromisoformat(invoice['period_start'])
         end = datetime.fromisoformat(invoice['period_end'])
+        if invoice.get('billing_period') == 'weekly':
+            last = end - timedelta(microseconds=1)
+            return f"{start:%A %d %b %Y %H:%M %z} to {last:%A %d %b %Y %H:%M:%S %z}"
         return f"{start:%d %b %Y %H:%M %z} to {end:%d %b %Y %H:%M %z} (end exclusive)"
     return invoice["period"]
 

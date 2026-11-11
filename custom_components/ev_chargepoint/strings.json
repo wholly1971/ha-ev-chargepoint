@@ -85,7 +85,7 @@
           "session_power_threshold": "Each charge: charging power threshold (W)",
           "session_idle_minutes": "Each charge: idle minutes before closing a charge"
         },
-        "description": "Choose each charge, daily (local midnight), weekly (Monday to Monday), or monthly. An enabled automatic email sends the PDF after its billing period closes. Each charge ends after power stays below the threshold for the idle delay; unavailable readings require review. Calendar fixed fees are prorated from the monthly fee; each-charge billing requires a zero monthly fee. Period changes close the previous unbilled portion without rebilling it. The invoice layout is independent: tariff lines, daily totals, tariff totals or one total for the chosen period. Existing invoices never change. Incomplete periods require approval. Empty periods without fees do not send an email."
+        "description": "Choose each charge, daily (local midnight), weekly (Monday to Sunday), or monthly. Weekly billing includes all of Sunday and closes at Sunday midnight in Home Assistant local time. An enabled automatic email sends the PDF after its billing period closes (just after Sunday ends for weekly bills, when readings are complete). Each charge ends after power stays below the threshold for the idle delay; unavailable readings require review. Calendar fixed fees are prorated from the monthly fee; each-charge billing requires a zero monthly fee. Period changes close the previous unbilled portion without rebilling it. The invoice layout is independent: tariff lines, daily totals, tariff totals or one total for the chosen period. Existing invoices never change. Incomplete periods require approval. Empty periods without fees do not send an email."
       },
       "tariffs": {
         "title": "Time-based charge rates",
@@ -497,7 +497,7 @@
           "session_power_threshold": "Each charge: charging power threshold (W)",
           "session_idle_minutes": "Each charge: idle minutes before closing a charge"
         },
-        "description": "Choose each charge, daily (local midnight), weekly (Monday to Monday), or monthly. An enabled automatic email sends the PDF after its billing period closes. Each charge ends after power stays below the threshold for the idle delay; unavailable readings require review. Calendar fixed fees are prorated from the monthly fee; each-charge billing requires a zero monthly fee. Period changes close the previous unbilled portion without rebilling it. The invoice layout is independent: tariff lines, daily totals, tariff totals or one total for the chosen period. Existing invoices never change. Incomplete periods require approval. Empty periods without fees do not send an email."
+        "description": "Choose each charge, daily (local midnight), weekly (Monday to Sunday), or monthly. Weekly billing includes all of Sunday and closes at Sunday midnight in Home Assistant local time. An enabled automatic email sends the PDF after its billing period closes (just after Sunday ends for weekly bills, when readings are complete). Each charge ends after power stays below the threshold for the idle delay; unavailable readings require review. Calendar fixed fees are prorated from the monthly fee; each-charge billing requires a zero monthly fee. Period changes close the previous unbilled portion without rebilling it. The invoice layout is independent: tariff lines, daily totals, tariff totals or one total for the chosen period. Existing invoices never change. Incomplete periods require approval. Empty periods without fees do not send an email."
       },
       "tariffs": {
         "title": "Time-based charge rates",
@@ -863,7 +863,7 @@
       "options": {
         "each_charge": "Each charge",
         "daily": "Daily",
-        "weekly": "Weekly (Monday to Monday)",
+        "weekly": "Weekly (Monday to Sunday)",
         "monthly": "Monthly"
       }
     }
