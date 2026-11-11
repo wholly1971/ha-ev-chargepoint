@@ -32,6 +32,15 @@ def sample_invoice():
 
 
 class InvoicePdfTests(unittest.TestCase):
+    def test_weekly_chart_crosses_month_and_dst_without_extra_day(self):
+        invoice = sample_invoice()
+        invoice.update(period='weekly-cycle', period_start='2026-03-30T00:00:00+11:00',
+                       period_end='2026-04-06T00:00:00+10:00')
+        rows = pdf.daily_usage(invoice)
+        self.assertEqual(len(rows), 7)
+        self.assertEqual(rows[-1]['date'].isoformat(), '2026-04-05')
+        self.assertTrue(all(row['kwh'] is None for row in rows))
+
     def test_chart_distinguishes_zero_missing_and_incomplete(self):
         invoice = sample_invoice()
         invoice['days'] = {'2026-09-01': {'kwh': '0'},

@@ -20,7 +20,7 @@ def _runtime(hass, connection, msg):
 @websocket_api.websocket_command({
     vol.Required("type"): "ev_chargepoint/invoice",
     vol.Required("entry_id"): str,
-    vol.Required("period"): vol.Match(r"^\d{4}-(0[1-9]|1[0-2])$"),
+    vol.Required("period"): vol.All(str, vol.Length(min=1, max=100), vol.Match(r"^[A-Za-z0-9_-]+$")),
 })
 @websocket_api.require_admin
 @callback

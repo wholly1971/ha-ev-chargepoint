@@ -121,7 +121,7 @@ def email_schema(values, hass):
 
 
 def main_values(values):
-    return {key: value for key, value in values.items() if key not in (*EMAIL_KEYS, "invoice_billing_option") and not key.startswith("tariff_") and key != "sensor_rate_tax_percent"}
+    return {key: value for key, value in values.items() if key not in (*EMAIL_KEYS, "invoice_billing_option", "billing_period", "session_power_threshold", "session_idle_minutes") and not key.startswith("tariff_") and key != "sensor_rate_tax_percent"}
 
 
 def tariff_schema(values):
@@ -229,13 +229,27 @@ class EmailFlowMixin:
         errors = {}
         if user_input is not None:
             choice = user_input.get("invoice_billing_option")
+            period = user_input.get("billing_period", self._values.get("billing_period", "monthly"))
             if choice not in INVOICE_BILLING_OPTIONS:
                 errors["invoice_billing_option"] = "invalid_invoice_option"
+            elif period not in ("each_charge", "daily", "weekly", "monthly"):
+                errors["billing_period"] = "invalid_invoice_option"
+            elif period == "each_charge" and decimal(self._values.get("fixed_fee", "0")):
+                errors["billing_period"] = "session_fixed_fee"
             else:
                 self._values["invoice_billing_option"] = choice
+                self._values.update({key: user_input.get(key, self._values.get(key, DEFAULTS[key]))
+                                     for key in ("billing_period", "session_power_threshold", "session_idle_minutes")})
                 return self.async_create_entry(
                     title=self._values["name"] if self._entry_id is None else "", data=self._values)
         return self.async_show_form(step_id="invoice_billing", data_schema=vol.Schema({
+            vol.Required("billing_period", default=self._values.get("billing_period", "monthly")):
+                selector.SelectSelector(selector.SelectSelectorConfig(
+                    options=["each_charge", "daily", "weekly", "monthly"], translation_key="billing_period")),
+            vol.Required("session_power_threshold", default=self._values.get("session_power_threshold", 100)):
+                vol.All(vol.Coerce(int), vol.Range(min=1, max=5000)),
+            vol.Required("session_idle_minutes", default=self._values.get("session_idle_minutes", 5)):
+                vol.All(vol.Coerce(int), vol.Range(min=1, max=120)),
             vol.Required("invoice_billing_option", default=self._values.get("invoice_billing_option", "itemised")):
                 selector.SelectSelector(selector.SelectSelectorConfig(
                     options=list(INVOICE_BILLING_OPTIONS), translation_key="invoice_billing_option"))

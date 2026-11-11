@@ -1,7 +1,7 @@
 """Daily invoice evidence and a vector bar chart, without history backfilling."""
 
 from calendar import monthrange
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import InvalidOperation
 
 from .billing import decimal
@@ -9,10 +9,17 @@ from .billing import decimal
 
 def daily_usage(invoice):
     """Keep missing, measured zero and incomplete days distinct."""
-    year, month = map(int, invoice['period'].split('-'))
+    if invoice.get('period_start'):
+        start = datetime.fromisoformat(invoice['period_start'])
+        end = datetime.fromisoformat(invoice['period_end'])
+        first = start.date()
+        last = (end - timedelta(microseconds=1)).date()
+        stamps = [first + timedelta(days=day) for day in range(max(1, (last - first).days + 1))]
+    else:
+        year, month = map(int, invoice['period'].split('-'))
+        stamps = [date(year, month, day) for day in range(1, monthrange(year, month)[1] + 1)]
     rows = []
-    for day in range(1, monthrange(year, month)[1] + 1):
-        stamp = date(year, month, day)
+    for stamp in stamps:
         bucket = invoice.get('days', {}).get(stamp.isoformat())
         value, partial = None, False
         if bucket is not None:

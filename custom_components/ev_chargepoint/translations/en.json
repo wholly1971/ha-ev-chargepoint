@@ -31,7 +31,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -80,9 +80,12 @@
       "invoice_billing": {
         "title": "Invoice Billing Options",
         "data": {
-          "invoice_billing_option": "Invoice Billing Options"
+          "invoice_billing_option": "Invoice Billing Options",
+          "billing_period": "Billing period and automatic email frequency",
+          "session_power_threshold": "Each charge: charging power threshold (W)",
+          "session_idle_minutes": "Each charge: idle minutes before closing a charge"
         },
-        "description": "Choose how the monthly invoice groups recorded charging: individual daily tariff/rate lines, combined daily charges, monthly tariff totals or one monthly total. Fees and tax remain separate; totals and recorded rates do not change. Older usage without daily detail remains a labelled summary. The branded invoice layout is automatically populated from seller/customer and payment settings and attached as a PDF whenever invoice email is enabled. This does not change the monthly sending schedule or send a test email."
+        "description": "Choose each charge, daily (local midnight), weekly (Monday to Monday), or monthly. An enabled automatic email sends the PDF after its billing period closes. Each charge ends after power stays below the threshold for the idle delay; unavailable readings require review. Calendar fixed fees are prorated from the monthly fee; each-charge billing requires a zero monthly fee. Period changes close the previous unbilled portion without rebilling it. The invoice layout is independent: tariff lines, daily totals, tariff totals or one total for the chosen period. Existing invoices never change. Incomplete periods require approval. Empty periods without fees do not send an email."
       },
       "tariffs": {
         "title": "Time-based charge rates",
@@ -113,7 +116,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -188,7 +191,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -263,7 +266,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -338,7 +341,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -405,7 +408,8 @@
       "currency_locked": "Currency cannot change on an existing billing account.",
       "sensor_assigned": "This power sensor is already assigned to another EV ChargePoint account.",
       "switch_assigned": "This switch is already controlled by another EV ChargePoint account.",
-      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u0153100), and valid schedule times. Currency cannot change on an existing account."
+      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u0153100), and valid schedule times. Currency cannot change on an existing account.",
+      "session_fixed_fee": "Set the monthly fixed fee to zero before choosing each-charge billing. Calendar billing prorates the monthly fee."
     }
   },
   "options": {
@@ -439,7 +443,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -488,9 +492,12 @@
       "invoice_billing": {
         "title": "Invoice Billing Options",
         "data": {
-          "invoice_billing_option": "Invoice Billing Options"
+          "invoice_billing_option": "Invoice Billing Options",
+          "billing_period": "Billing period and automatic email frequency",
+          "session_power_threshold": "Each charge: charging power threshold (W)",
+          "session_idle_minutes": "Each charge: idle minutes before closing a charge"
         },
-        "description": "Choose how the monthly invoice groups recorded charging: individual daily tariff/rate lines, combined daily charges, monthly tariff totals or one monthly total. Fees and tax remain separate; totals and recorded rates do not change. Older usage without daily detail remains a labelled summary. The branded invoice layout is automatically populated from seller/customer and payment settings and attached as a PDF whenever invoice email is enabled. This does not change the monthly sending schedule or send a test email."
+        "description": "Choose each charge, daily (local midnight), weekly (Monday to Monday), or monthly. An enabled automatic email sends the PDF after its billing period closes. Each charge ends after power stays below the threshold for the idle delay; unavailable readings require review. Calendar fixed fees are prorated from the monthly fee; each-charge billing requires a zero monthly fee. Period changes close the previous unbilled portion without rebilling it. The invoice layout is independent: tariff lines, daily totals, tariff totals or one total for the chosen period. Existing invoices never change. Incomplete periods require approval. Empty periods without fees do not send an email."
       },
       "tariffs": {
         "title": "Time-based charge rates",
@@ -521,7 +528,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -596,7 +603,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -671,7 +678,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -746,7 +753,7 @@
           "start_time": "Daily start time (inclusive)",
           "end_time": "Daily stop time (exclusive)",
           "control_switch": "Automatically control the charger switch",
-          "auto_email": "Automatically email monthly invoices",
+          "auto_email": "Automatically email invoices at the end of the billing period",
           "currency": "Currency code (e.g. AUD)",
           "rate": "Price per kWh",
           "rate_includes_gst": "Default rate includes GST",
@@ -813,7 +820,8 @@
       "currency_locked": "Currency cannot change on an existing billing account.",
       "sensor_assigned": "This power sensor is already assigned to another EV ChargePoint account.",
       "switch_assigned": "This switch is already controlled by another EV ChargePoint account.",
-      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u0153100), and valid schedule times. Currency cannot change on an existing account."
+      "invalid_config": "Check the W/kW sensor, unique sensor/switch assignment, SMTP server/sender/customer email when automatic email is enabled, three-letter currency, nonnegative rates, tax (0\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u0153100), and valid schedule times. Currency cannot change on an existing account.",
+      "session_fixed_fee": "Set the monthly fixed fee to zero before choosing each-charge billing. Calendar billing prorates the monthly fee."
     }
   },
   "selector": {
@@ -821,8 +829,8 @@
       "options": {
         "itemised": "Itemised individual tariff charging (default)",
         "daily": "Combined tariffs - total daily charge",
-        "monthly_tariffs": "Monthly tariff totals",
-        "monthly_total": "Monthly total"
+        "monthly_tariffs": "Tariff totals for the billing period",
+        "monthly_total": "One total for the billing period"
       }
     },
     "billing_scope": {
@@ -849,6 +857,14 @@
       "options": {
         "starttls": "STARTTLS (usually port 587)",
         "tls": "TLS (usually port 465)"
+      }
+    },
+    "billing_period": {
+      "options": {
+        "each_charge": "Each charge",
+        "daily": "Daily",
+        "weekly": "Weekly (Monday to Monday)",
+        "monthly": "Monthly"
       }
     }
   }

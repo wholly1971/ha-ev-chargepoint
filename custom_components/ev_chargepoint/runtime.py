@@ -41,6 +41,7 @@ class BillingRuntime(DataUpdateCoordinator):
         self.charge_mode = "Automatic schedule"
         self.override_until = None
         self.charge_mode_entity_id = None
+        self.billing_period_entity_id = None
         self.email_test_lock = asyncio.Lock()
         self.email_test = {"status": "not_tested", "attempted_at": None}
         self.last_email_test = None
@@ -137,6 +138,8 @@ class BillingRuntime(DataUpdateCoordinator):
         for period in sorted(self.ledger.data["months"]):
             if period >= current:
                 continue
+            if period >= self.ledger.data.get("cycle_cutover_month", "9999-99"):
+                continue
             try:
                 invoice = self.ledger.issue(period, current, self.entry.entry_id, now, approve,
                     invoice_billing_option=self.config.get("invoice_billing_option", "itemised"))
@@ -150,6 +153,24 @@ class BillingRuntime(DataUpdateCoordinator):
                 continue
             if self.config["auto_email"] and self.ledger.data["delivery"].get(period) == "pending":
                 await self._send(period)
+        for key, bucket in list(self.ledger.data.get("cycles", {}).items()):
+            if not bucket["closed"]:
+                continue
+            try:
+                invoice = self.ledger.issue_cycle(key, self.entry.entry_id, now, approve,
+                    invoice_billing_option=self.config.get("invoice_billing_option", "itemised"))
+            except ValueError:
+                continue
+            if invoice is None:
+                continue
+            await self.store.async_save(self.ledger.data)
+            try:
+                await self.hass.async_add_executor_job(self._write_invoice, invoice)
+            except (OSError, ValueError):
+                _LOGGER.warning("Could not save EV invoice files; delivery withheld")
+                continue
+            if self.config["auto_email"] and self.ledger.data["delivery"].get(key) == "pending":
+                await self._send(key)
 
     def _write_invoice(self, invoice):
         folder = Path(self.hass.config.path("ev_chargepoint_invoices", self.entry.entry_id))

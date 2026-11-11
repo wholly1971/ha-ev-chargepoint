@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 - 2026-11-11
+
+- Add each-charge, daily, weekly and monthly invoice periods with corresponding automatic PDF email delivery. Monthly remains the existing default.
+- Add a native Billing period selector for the portal/device and period, power-threshold and idle-delay fields in Invoice Billing Options.
+- Preserve tariff/GST evidence and daily graphs across calendar boundaries, DST and restarts. Close unbilled remainders at period changes without invoicing usage twice.
+- Prorate calendar monthly fixed fees by elapsed local-month time; require zero monthly fee for each-charge billing. Keep incomplete-period approval and uncertain-email retry guards.
+
 ## 0.4.5 - 2026-11-08
 
 - Add a daily kWh bar-chart comparison page to every generated PDF invoice, with calendar days/weekdays, recorded daily total, peak day and average per recorded day.

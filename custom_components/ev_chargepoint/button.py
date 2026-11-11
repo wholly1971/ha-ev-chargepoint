@@ -19,7 +19,7 @@ class BillingButton(ButtonEntity):
         self.kind = kind
         self._attr_unique_id = f"{entry.entry_id}_{kind}"
         self._attr_name = {
-            "approve": "Approve all incomplete completed months",
+            "approve": "Approve all incomplete completed billing periods",
             "retry": "Retry pending or uncertain invoice emails",
             "test_email": "Send test email",
         }[kind]
