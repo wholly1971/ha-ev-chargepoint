@@ -13,6 +13,8 @@ DEFAULTS = {
     "start_time": "22:00:00",
     "end_time": "06:00:00",
     "control_switch": False,
+    "idle_shutoff_minutes": 30,
+    "idle_power_threshold": 100,
     "auto_email": False,
     "max_age": 300,
     "seller": "",

@@ -82,6 +82,9 @@ class BillingSensor(CoordinatorEntity, SensorEntity):
             "rate_includes_gst": self.coordinator.config.get("rate_includes_gst", False),
             "current_charge_rate": current_charge_rate(self.hass, self.coordinator.config, dt_util.now()),
             "charge_control": {"mode": self.coordinator.charge_mode,
+                               "idle_shutoff": self.coordinator.idle.status(
+                                   self.coordinator.config.get('idle_shutoff_minutes', 30),
+                                   self.coordinator.config.get('idle_power_threshold', 100)),
                                "entity_id": self.coordinator.charge_mode_entity_id,
                                "override_until": self.coordinator.override_until.isoformat() if self.coordinator.override_until else None,
                                "schedule_control_enabled": self.coordinator.config["control_switch"]},

@@ -15,7 +15,7 @@
 Home Assistant custom integration for scheduled EV charging, electricity charges,
 and monthly customer invoices. Install as a HACS custom repository.
 
-**Current release: 0.5.1.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
+**Current release: 0.6.0.** See [release notes](CHANGELOG.md). Live Gmail/SMTP
 delivery testing is still required before customer use.
 
 Install a numbered release in HACS, rather than `main` or a commit hash, for
@@ -377,3 +377,31 @@ still requires manual retry to avoid duplicate email. An email server accepting 
 message is not proof of inbox delivery.
 
 The portal resource source is in `dashboard/chargeport-operations-card.js`; update the existing custom card resource with this source and refresh the browser. It discovers the Billing period entity from the billing-status sensor attributes, without hardcoded entity names.
+
+
+## Automatic idle outlet shutoff (0.6.0)
+
+The configured charger outlet turns off after **30 continuously observed idle
+minutes**, in automatic or manual charging mode. The default active threshold is
+100 W. Configure **Turn outlet off after idle minutes** and **Active charging
+threshold** in the integration; zero minutes disables this feature. The threshold
+must be below the car's lowest active charging draw.
+
+Active charging restarts the idle timer. Unknown, stale or missing power, outlet
+off and long polling gaps reset it; restarts start a new observation interval.
+A persistent off latch prevents the scheduler from immediately turning the outlet
+back on. It clears at the next scheduled start, or after a successful explicit
+Start/Resume command. With all-day scheduling or automatic schedule control off,
+use Start/Resume explicitly. Failed off commands keep the latch and retry.
+
+The dashboard shows the idle timer/reason. **Idle is not confirmation of a fully
+charged battery**: an unplugged, paused or faulted vehicle can also draw no power.
+Battery full remains unconfirmed without actual vehicle SOC/full telemetry.
+Billing cadence, tariffs and invoice calculations are independent and unchanged.
+
+MQTT meters must report repeated values as well as changes. For Zigbee2MQTT,
+override the power sensor discovery property with
+`homeassistant: {power: {force_update: true}}` in that device's options so Home
+Assistant timestamps each received reading. This does not invent energy or treat
+an offline device as idle. Use Zigbee2MQTT's supported device-options API/UI;
+retain other device options and verify fresh timestamps after the change.

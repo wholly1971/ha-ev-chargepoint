@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 from .billing import Ledger, decimal, in_window, invoice_html
 from .const import DEFAULTS, DOMAIN
 from .tariffs import resolve_rates
+from .idle import IdleShutoff
 from .branding import logo_data_uri
 from .pdf_invoice import invoice_pdf
 from .mail import send_invoice, send_test_email
@@ -45,9 +46,11 @@ class BillingRuntime(DataUpdateCoordinator):
         self.email_test_lock = asyncio.Lock()
         self.email_test = {"status": "not_tested", "attempted_at": None}
         self.last_email_test = None
+        self.idle = IdleShutoff()
 
     async def async_start(self):
         self.ledger = Ledger(await self.store.async_load())
+        self.idle = IdleShutoff(self.ledger.data.get('idle_shutoff'))
         await self.async_tick()
 
         @callback
@@ -112,19 +115,57 @@ class BillingRuntime(DataUpdateCoordinator):
         async with self.charge_lock:
             await self._control_locked(now)
 
+    def _idle_watts(self, now):
+        power = self.hass.states.get(self.config["power_sensor"])
+        watts = None
+        if power is not None:
+            try:
+                unit = power.attributes.get('unit_of_measurement')
+                value = decimal(power.state)
+                age = (now - power.last_reported).total_seconds()
+                if 0 <= age <= self.config['max_age'] and value >= 0 and unit in ('W', 'kW'):
+                    watts = value * (1000 if unit == 'kW' else 1)
+            except (ValueError, InvalidOperation, AttributeError):
+                pass
+        return watts
+
     async def _control_locked(self, now):
+        entity_id = self.config.get("charger_switch")
+        if not entity_id:
+            return
+        state = self.hass.states.get(entity_id)
+        watts = self._idle_watts(now)
+        minutes = self.config.get('idle_shutoff_minutes', 30)
+        if not minutes:
+            self.idle.reset()
+        idle_off = self.idle.observe(now, state is not None and state.state == 'on', watts,
+                                     minutes, decimal(self.config.get('idle_power_threshold', 100)), self.config['max_age'])
+        newly_blocked = idle_off and not self.idle.saved.get('blocked')
+        if newly_blocked:
+            self.idle.block(now, self._next_schedule_start(now))
+        # Persist the latch before switching off so a restart cannot re-energise it.
+        if self.ledger.data.get('idle_shutoff', {}) != self.idle.saved:
+            self.ledger.data['idle_shutoff'] = dict(self.idle.saved)
+            await self.store.async_save(self.ledger.data)
+        if newly_blocked:
+            latest = self._idle_watts(dt_util.utcnow())
+            if latest is None or latest >= decimal(self.config.get('idle_power_threshold', 100)):
+                self.idle.reset()
+                self.ledger.data['idle_shutoff'] = {}
+                await self.store.async_save(self.ledger.data)
+                return
         if self.override_until is not None and now >= self.override_until:
             self.charge_mode = "Automatic schedule"
             self.override_until = None
-        if self.charge_mode == "Automatic schedule":
+        if idle_off:
+            desired = 'off'
+        elif self.charge_mode == "Automatic schedule":
             if not self.config["control_switch"]:
                 return
             desired = "on" if in_window(dt_util.as_local(now), self.config) else "off"
         else:
             desired = "on" if self.charge_mode == "Manual charging on" else "off"
-        entity_id = self.config["charger_switch"]
-        state = self.hass.states.get(entity_id)
-        if state is None or state.state == desired:
+        if state is None or state.state not in ('on', 'off') or state.state == desired:
             return
         try:
             await self.hass.services.async_call(
@@ -257,6 +298,19 @@ class BillingRuntime(DataUpdateCoordinator):
                 return boundary
         return None
 
+    def _next_schedule_start(self, now):
+        if not self.config['control_switch'] or self.config['schedule_mode'] != 'window':
+            return None
+        previous = in_window(dt_util.as_local(now), self.config)
+        boundary = now.replace(second=0, microsecond=0)
+        for _ in range(3000):
+            boundary += timedelta(minutes=1)
+            current = in_window(dt_util.as_local(boundary), self.config)
+            if current and not previous:
+                return boundary
+            previous = current
+        return None
+
     async def async_set_charge_mode(self, mode):
         """Explicit manual override; automatic operation resumes at the next boundary."""
         if mode not in ("Automatic schedule", "Manual charging on", "Manual charging off"):
@@ -275,6 +329,10 @@ class BillingRuntime(DataUpdateCoordinator):
                 apply = True
             if apply:
                 await self.hass.services.async_call("switch", f"turn_{desired}", {"entity_id": entity_id}, blocking=True)
+            if mode == 'Automatic schedule' or (apply and mode == 'Manual charging on'):
+                self.idle.reset()
+                self.ledger.data['idle_shutoff'] = {}
+                await self.store.async_save(self.ledger.data)
             self.charge_mode = mode
             self.override_until = self._next_schedule_boundary(now) if mode != "Automatic schedule" else None
             self.async_set_updated_data(self.ledger.data)
