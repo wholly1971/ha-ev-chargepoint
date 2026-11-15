@@ -73,9 +73,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "Configure billing and charging, then choose one email method. The next step shows only settings for that method. No email saves local invoices only. Gmail (Google app password) needs no connected Google Mail account. Schedule times are saved to the minute. Tick Includes GST beside prices or fees that already include GST; set GST / tax percentage (normally 10). Included GST is extracted and shown on the invoice, never added twice."
+        "description": "Configure billing and charging, then choose one email method. The next step shows only settings for that method. No email saves local invoices only. Gmail (Google app password) needs no connected Google Mail account. Schedule times are saved to the minute. Tick Includes GST beside prices or fees that already include GST; set GST / tax percentage (normally 10). Included GST is extracted and shown on the invoice, never added twice. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       },
       "invoice_billing": {
         "title": "Invoice Billing Options",
@@ -158,9 +160,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "Define Peak, Off Peak, Shoulder 1, Shoulder 2 and EV Night. Enable only bands you use. From is inclusive; To is exclusive; overnight windows are supported. Overlaps are rejected. Uncovered times use the default rate. A selected sensor overrides the manual rate when valid; unavailable/invalid sensors use the manual fallback and are reported. Tick Includes GST beside each manual rate that already contains GST; otherwise it is tax-exclusive. Set GST / tax percentage to 10 for Australian GST. Mark tax-inclusive sensor prices (such as Haggle) to remove the included tax before invoice tax is applied. Charging switch control remains separate."
+        "description": "Define Peak, Off Peak, Shoulder 1, Shoulder 2 and EV Night. Enable only bands you use. From is inclusive; To is exclusive; overnight windows are supported. Overlaps are rejected. Uncovered times use the default rate. A selected sensor overrides the manual rate when valid; unavailable/invalid sensors use the manual fallback and are reported. Tick Includes GST beside each manual rate that already contains GST; otherwise it is tax-exclusive. Set GST / tax percentage to 10 for Australian GST. Mark tax-inclusive sensor prices (such as Haggle) to remove the included tax before invoice tax is applied. Charging switch control remains separate. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       },
       "email_gmail": {
         "title": "Gmail with Google app password",
@@ -233,9 +237,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "Enter your Gmail address as the login username and paste the 16-character app password generated by Google. Leave sender blank to use the login address. No connected Google Mail account or server settings are needed."
+        "description": "Enter your Gmail address as the login username and paste the 16-character app password generated by Google. Leave sender blank to use the login address. No connected Google Mail account or server settings are needed. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       },
       "email_gmail_oauth": {
         "title": "Connected Google Mail account",
@@ -308,9 +314,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "First authorize Google Mail in Home Assistant. Select that account and enter the invoice recipient. No app password is used here."
+        "description": "First authorize Google Mail in Home Assistant. Select that account and enter the invoice recipient. No app password is used here. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       },
       "email_custom": {
         "title": "Custom SMTP email",
@@ -383,9 +391,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "Enter the server, login, sender and invoice recipient supplied by your email provider."
+        "description": "Enter the server, login, sender and invoice recipient supplied by your email provider. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       }
     },
     "error": {
@@ -485,9 +495,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "Configure billing and charging, then choose one email method. The next step shows only settings for that method. No email saves local invoices only. Gmail (Google app password) needs no connected Google Mail account. Schedule times are saved to the minute. Tick Includes GST beside prices or fees that already include GST; set GST / tax percentage (normally 10). Included GST is extracted and shown on the invoice, never added twice."
+        "description": "Configure billing and charging, then choose one email method. The next step shows only settings for that method. No email saves local invoices only. Gmail (Google app password) needs no connected Google Mail account. Schedule times are saved to the minute. Tick Includes GST beside prices or fees that already include GST; set GST / tax percentage (normally 10). Included GST is extracted and shown on the invoice, never added twice. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       },
       "invoice_billing": {
         "title": "Invoice Billing Options",
@@ -570,9 +582,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "Define Peak, Off Peak, Shoulder 1, Shoulder 2 and EV Night. Enable only bands you use. From is inclusive; To is exclusive; overnight windows are supported. Overlaps are rejected. Uncovered times use the default rate. A selected sensor overrides the manual rate when valid; unavailable/invalid sensors use the manual fallback and are reported. Tick Includes GST beside each manual rate that already contains GST; otherwise it is tax-exclusive. Set GST / tax percentage to 10 for Australian GST. Mark tax-inclusive sensor prices (such as Haggle) to remove the included tax before invoice tax is applied. Charging switch control remains separate."
+        "description": "Define Peak, Off Peak, Shoulder 1, Shoulder 2 and EV Night. Enable only bands you use. From is inclusive; To is exclusive; overnight windows are supported. Overlaps are rejected. Uncovered times use the default rate. A selected sensor overrides the manual rate when valid; unavailable/invalid sensors use the manual fallback and are reported. Tick Includes GST beside each manual rate that already contains GST; otherwise it is tax-exclusive. Set GST / tax percentage to 10 for Australian GST. Mark tax-inclusive sensor prices (such as Haggle) to remove the included tax before invoice tax is applied. Charging switch control remains separate. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       },
       "email_gmail": {
         "title": "Gmail with Google app password",
@@ -645,9 +659,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "Enter your Gmail address as the login username and paste the 16-character app password generated by Google. Leave sender blank to use the login address. No connected Google Mail account or server settings are needed."
+        "description": "Enter your Gmail address as the login username and paste the 16-character app password generated by Google. Leave sender blank to use the login address. No connected Google Mail account or server settings are needed. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       },
       "email_gmail_oauth": {
         "title": "Connected Google Mail account",
@@ -720,9 +736,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "First authorize Google Mail in Home Assistant. Select that account and enter the invoice recipient. No app password is used here."
+        "description": "First authorize Google Mail in Home Assistant. Select that account and enter the invoice recipient. No app password is used here. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       },
       "email_custom": {
         "title": "Custom SMTP email",
@@ -795,9 +813,11 @@
           "tariff_ev_night_rate": "EV Night \u2014 Manual / fallback rate per kWh",
           "tariff_ev_night_rate_includes_gst": "EV Night \u2014 Manual / fallback rate includes GST",
           "tariff_ev_night_sensor": "EV Night \u2014 Rate sensor (optional)",
-          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax"
+          "tariff_ev_night_sensor_includes_tax": "EV Night \u2014 Sensor price includes GST / tax",
+          "idle_shutoff_minutes": "Turn outlet off after idle minutes (30; 0 disables)",
+          "idle_power_threshold": "Active charging threshold for idle shutoff (W)"
         },
-        "description": "Enter the server, login, sender and invoice recipient supplied by your email provider."
+        "description": "Enter the server, login, sender and invoice recipient supplied by your email provider. The idle shutoff applies to automatic and manual charging. Fresh power below the threshold for the full timeout switches the outlet off and holds it off until the next scheduled start or an explicit Start/Resume. Unknown/stale power resets the timer; an idle reading does not confirm a full battery."
       }
     },
     "error": {

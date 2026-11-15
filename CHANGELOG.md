@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 - 2026-11-15
+
+- Add a configurable 30-minute continuous-idle outlet shutoff, with a default 100 W active-charging threshold, applying to automatic and manual charging.
+- Persist a shutoff latch to prevent immediate scheduler restart; rearm at the next scheduled start or explicit Start/Resume. Reset idle timing on unknown/stale power and restarts.
+- Expose idle timing/reason on the portal without claiming low power proves the battery is full. Preserve billing, tariffs, issued invoices and email states.
+
 ## 0.5.1 - 2026-11-11
 
 - Describe weekly billing consistently as Monday to Sunday in configuration, the portal and newly rendered invoice periods. Keep the next-week midnight boundary exclusive internally.

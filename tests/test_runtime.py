@@ -253,6 +253,84 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             "switch", "turn_on", {"entity_id": "switch.ev"}, blocking=True
         )
 
+    async def test_idle_manual_charge_off_is_persisted_and_held(self):
+        from datetime import timedelta
+        self.runtime.config.update(control_switch=True, charger_switch='switch.ev',
+                                   schedule_mode='window', start_time='22:00:00', end_time='06:00:00')
+        self.runtime.charge_mode = 'Manual charging on'
+        outlet = SimpleNamespace(state='on')
+        power = SimpleNamespace(state='0', attributes={'unit_of_measurement': 'W'}, last_reported=NOW)
+        self.hass.states = SimpleNamespace(get=lambda entity: power if entity == 'sensor.ev' else outlet)
+
+        async def switched(*args, **kwargs):
+            if args[1] == 'turn_off':
+                self.assertTrue(self.runtime.store.snapshots[-1]['idle_shutoff']['blocked'])
+                outlet.state = 'off'
+        self.hass.services.async_call.side_effect = switched
+        for minute in range(31):
+            now = NOW + timedelta(minutes=minute)
+            power.last_reported = now
+            with patch.object(runtime_module.dt_util, 'utcnow', return_value=now):
+                await self.runtime._control(now)
+        self.hass.services.async_call.assert_awaited_once_with('switch', 'turn_off', {'entity_id': 'switch.ev'}, blocking=True)
+        self.assertEqual(self.runtime.idle.saved['release_at'], NOW.replace(hour=22).isoformat())
+        await self.runtime._control(NOW + timedelta(hours=1))
+        self.assertEqual(self.hass.services.async_call.await_count, 1)
+        self.assertFalse(self.runtime.idle.status(30, 100)['battery_full_confirmed'])
+        await self.runtime.async_set_charge_mode('Manual charging on')
+        self.assertFalse(self.runtime.idle.saved)
+        self.assertEqual(self.hass.services.async_call.await_args.args[1], 'turn_on')
+
+    async def test_active_power_arriving_during_idle_save_cancels_off(self):
+        from datetime import timedelta
+        self.runtime.config.update(control_switch=True, charger_switch='switch.ev')
+        outlet = SimpleNamespace(state='on')
+        power = SimpleNamespace(state='0', attributes={'unit_of_measurement': 'kW'}, last_reported=NOW)
+        self.hass.states = SimpleNamespace(get=lambda entity: power if entity == 'sensor.ev' else outlet)
+        for minute in range(30):
+            power.last_reported = NOW + timedelta(minutes=minute)
+            await self.runtime._control(power.last_reported)
+        now = NOW + timedelta(minutes=30)
+        power.last_reported = now
+        async def save(_data):
+            power.state = '1.5'
+        self.runtime.store.async_save = AsyncMock(side_effect=save)
+        with patch.object(runtime_module.dt_util, 'utcnow', return_value=now):
+            await self.runtime._control(now)
+        self.hass.services.async_call.assert_not_awaited()
+        self.assertFalse(self.runtime.idle.saved)
+
+    async def test_idle_stale_power_never_shuts_outlet_off(self):
+        from datetime import timedelta
+        self.runtime.config.update(control_switch=True, charger_switch='switch.ev')
+        outlet = SimpleNamespace(state='on')
+        power = SimpleNamespace(state='0', attributes={'unit_of_measurement': 'W'}, last_reported=NOW)
+        self.hass.states = SimpleNamespace(get=lambda entity: power if entity == 'sensor.ev' else outlet)
+        for minute in range(31):
+            await self.runtime._control(NOW + timedelta(minutes=minute))
+        self.hass.services.async_call.assert_not_awaited()
+        self.assertIsNone(self.runtime.idle.since)
+
+    async def test_failed_idle_off_keeps_latch_and_retries(self):
+        from datetime import timedelta
+        self.runtime.config.update(control_switch=True, charger_switch='switch.ev')
+        self.runtime.idle.block(NOW, None)
+        self.hass.states = SimpleNamespace(get=lambda _: SimpleNamespace(state='on'))
+        self.hass.services.async_call.side_effect = HAError('Offline')
+        await self.runtime._control(NOW)
+        await self.runtime._control(NOW + timedelta(seconds=30))
+        self.assertEqual(self.hass.services.async_call.await_count, 2)
+        self.assertTrue(self.runtime.ledger.data['idle_shutoff']['blocked'])
+        self.assertTrue(all(c.args[1] == 'turn_off' for c in self.hass.services.async_call.await_args_list))
+
+    async def test_explicit_auto_rearms_without_energising_disabled_schedule(self):
+        self.runtime.config.update(control_switch=False, charger_switch='switch.ev')
+        self.runtime.idle.block(NOW, None)
+        self.hass.states = SimpleNamespace(get=lambda _: SimpleNamespace(state='off'))
+        await self.runtime.async_set_charge_mode('Automatic schedule')
+        self.assertFalse(self.runtime.idle.saved)
+        self.hass.services.async_call.assert_not_awaited()
+
     async def test_no_email_blocks_automatic_and_manual_delivery(self):
         self.runtime.config.update(smtp_provider="none", auto_email=True)
         await self.runtime._invoice_completed(NOW)

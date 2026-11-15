@@ -55,6 +55,8 @@ def schema(values, hass=None):
         fields[vol.Required(key, default=default(key))] = selector.TimeSelector()
     for key in ("control_switch", "auto_email"):
         fields[vol.Required(key, default=default(key))] = selector.BooleanSelector()
+    for key, minimum, maximum in (("idle_shutoff_minutes", 0, 1440), ("idle_power_threshold", 1, 5000)):
+        fields[vol.Required(key, default=default(key))] = vol.All(vol.Coerce(int), vol.Range(min=minimum, max=maximum))
     for key in ("currency", "rate", "fixed_fee", "tax_percent"):
         fields[vol.Required(key, default=default(key))] = selector.TextSelector()
         if key in ("rate", "fixed_fee"):
